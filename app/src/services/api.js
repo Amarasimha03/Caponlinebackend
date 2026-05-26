@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// REACT_APP_API_URL can be set to override (e.g. http://localhost:5000/api in dev).
+// In production on Render, the frontend is served by the same Express server,
+// so '/api' (relative) resolves correctly to the right host automatically.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || process.env.REACT_APP_API_URL,
+  baseURL: process.env.REACT_APP_API_URL || '/api',
   withCredentials: true,
 });
 
