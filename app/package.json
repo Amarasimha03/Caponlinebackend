@@ -20,7 +20,7 @@
     "react-dom": "^19.2.6",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.15.1",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^0.0.0",
     "recharts": "^3.8.1",
     "socket.io-client": "^4.8.3",
     "web-vitals": "^2.1.4",
@@ -53,5 +53,4 @@
       "last 1 safari version"
     ]
   }
-
 }
