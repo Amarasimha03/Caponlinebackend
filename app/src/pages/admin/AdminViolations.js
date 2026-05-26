@@ -1,0 +1,69 @@
+import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { AlertTriangle, Search } from 'lucide-react';
+import api from '../../services/api';
+
+export default function AdminViolations() {
+  const [violations, setViolations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try { const { data } = await api.get('/violations'); setViolations(data.violations); } catch {}
+      setLoading(false);
+    })();
+  }, []);
+
+  const TYPES = [...new Set(violations.map(v => v.type))];
+  const filtered = violations.filter(v =>
+    (!typeFilter || v.type === typeFilter) &&
+    (!search || v.employee?.fullName?.toLowerCase().includes(search.toLowerCase()))
+  );
+  const sevColor = (s) => s === 'high' ? 'badge-danger' : s === 'medium' ? 'badge-warning' : 'badge-info';
+
+  if (loading) return <div className="loading-center"><div className="loading-spinner" /></div>;
+
+  return (
+    <div>
+      <div className="page-header-row">
+        <div className="page-header" style={{ marginBottom: 0 }}>
+          <h1>Violation Reports</h1>
+          <p>Monitor cheating violations</p>
+        </div>
+        <div className="page-actions">
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input className="form-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 38, width: 200, marginBottom: 0 }} />
+          </div>
+          <select className="form-input form-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ width: 160, marginBottom: 0 }}>
+            <option value="">All Types</option>
+            {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="card" style={{ marginTop: 24, padding: 0, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr><th>Employee</th><th>Assessment</th><th>Type</th><th>Severity</th><th>Time</th></tr></thead>
+          <tbody>
+            {filtered.map((v, i) => (
+              <motion.tr key={v._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
+                <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="avatar" style={{ width: 30, height: 30, fontSize: 12, background: 'var(--gradient-danger)' }}>{v.employee?.fullName?.[0]}</div>
+                  <div><div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{v.employee?.fullName}</div></div>
+                </div></td>
+                <td style={{ fontSize: 13 }}>{v.assessment?.title}</td>
+                <td><span className="badge badge-warning">{v.type?.replace(/-/g, ' ')}</span></td>
+                <td><span className={`badge ${sevColor(v.severity)}`}>{v.severity}</span></td>
+                <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(v.timestamp).toLocaleString()}</td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <div className="empty-state"><AlertTriangle size={48} /><h3>No violations</h3></div>}
+      </div>
+    </div>
+  );
+}
