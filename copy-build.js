@@ -1,28 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 
-function copyDir(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  let entries = fs.readdirSync(src, { withFileTypes: true });
-  for (let entry of entries) {
-    let srcPath = path.join(src, entry.name);
-    let destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
+const source = path.join(__dirname, 'app', 'build');
+const destination = path.join(__dirname, 'server', 'build');
 
-if (fs.existsSync('./server/build')) {
-  fs.rmSync('./server/build', { recursive: true, force: true });
-}
-
-if (fs.existsSync('./app/build')) {
-  copyDir('./app/build', './server/build');
-  console.log('React build copied to server/build');
-} else {
-  console.error('React build directory not found');
+if (!fs.existsSync(source)) {
+  console.error('React build folder not found:', source);
   process.exit(1);
 }
+
+if (fs.existsSync(destination)) {
+  fs.rmSync(destination, { recursive: true, force: true });
+}
+
+fs.mkdirSync(destination, { recursive: true });
+
+fs.cpSync(source, destination, { recursive: true });
+
+console.log('Build copied successfully.');
