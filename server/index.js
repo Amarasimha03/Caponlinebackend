@@ -5,6 +5,15 @@ const localCache = require('./utils/localCache');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
+// ── Startup diagnostics ─────────────────────────────────────
+console.log('🔍 ENV CHECK:');
+console.log('  JWT_SECRET:', process.env.JWT_SECRET ? '✅ SET' : '❌ MISSING (using fallback)');
+console.log('  GOOGLE_SHEET_URL:', process.env.GOOGLE_SHEET_URL ? '✅ SET' : '❌ MISSING (memory-only mode)');
+console.log('  ADMIN_EMAIL:', process.env.ADMIN_EMAIL || 'admin@gmail.com (default)');
+console.log('  NODE_ENV:', process.env.NODE_ENV || 'not set');
+console.log('  PORT:', process.env.PORT || '5000 (default)');
+
+
 // Route imports
 const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
