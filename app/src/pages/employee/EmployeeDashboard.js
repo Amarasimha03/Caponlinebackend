@@ -41,27 +41,10 @@ export default function EmployeeDashboard() {
     setLoading(false);
   }, []);
 
-  // Session protection: auto-redirect back to active exam if it exists
+  // Dashboard loaded normally, users will start the exam manually by clicking the "Start" button
   useEffect(() => {
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('examState_')) {
-          const cached = localStorage.getItem(key);
-          if (cached) {
-            const saved = JSON.parse(cached);
-            if (saved && saved.assessmentId && saved.phase && saved.phase !== 'submitted') {
-              console.log('[Dashboard] Active exam session found - redirecting back');
-              navigate(`/exam/${saved.assessmentId}`);
-              return;
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to restore active exam session', err);
-    }
-  }, [navigate]);
+    console.log('[Dashboard] Loaded successfully');
+  }, []);
 
   useEffect(() => {
     load();

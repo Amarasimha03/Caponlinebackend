@@ -35,11 +35,11 @@ function makeInitialState() {
         updatedAt: new Date().toISOString(),
       },
     ],
-    questions:   [],
+    questions: [],
     assessments: [],
-    results:     [],
-    violations:  [],
-    auditlogs:   [],
+    results: [],
+    violations: [],
+    auditlogs: [],
   };
 }
 
@@ -109,7 +109,7 @@ async function sheetsGet(params) {
   if (!SHEETS_URL) return null;
   const action = params?.action || 'unknown';
   try {
-    const qs  = new URLSearchParams(params).toString();
+    const qs = new URLSearchParams(params).toString();
     const res = await fetch(`${SHEETS_URL}?${qs}`, {
       cache: 'no-store',
       redirect: 'follow',
@@ -157,7 +157,7 @@ async function persistEntity(action, payload) {
 function safeParseArray(val) {
   if (Array.isArray(val)) return val;
   if (typeof val === 'string' && val.trim().startsWith('[')) {
-    try { return JSON.parse(val); } catch (_) {}
+    try { return JSON.parse(val); } catch (_) { }
   }
   return [];
 }
@@ -165,7 +165,7 @@ function safeParseArray(val) {
 function safeParseObject(val) {
   if (val && typeof val === 'object' && !Array.isArray(val)) return val;
   if (typeof val === 'string' && val.trim().startsWith('{')) {
-    try { return JSON.parse(val); } catch (_) {}
+    try { return JSON.parse(val); } catch (_) { }
   }
   return null;
 }
@@ -185,25 +185,25 @@ function hydrateSheetsData(raw) {
       (e) => e.role === 'admin' || e.email === adminEmail
     );
     const sheetEmployees = raw.employees.map((e) => ({
-      _id:                 e._id || generateId(),
-      employeeId:          e.employeeId || '',
-      fullName:            e.fullName || e.name || '',
-      email:               e.email || '',
-      phone:               e.phone || '',
-      password:            e.password || '',
-      department:          e.department || '',
-      designation:         e.designation || '',
-      company:             e.company || '',
-      role:                (e.role || 'employee').toLowerCase(),
-      isActive:            e.isActive !== 'false' && e.isActive !== false,
-      isVerified:          e.isVerified !== 'false' && e.isVerified !== false,
+      _id: e._id || generateId(),
+      employeeId: e.employeeId || '',
+      fullName: e.fullName || e.name || '',
+      email: e.email || '',
+      phone: e.phone || '',
+      password: e.password || '',
+      department: e.department || '',
+      designation: e.designation || '',
+      company: e.company || '',
+      role: (e.role || 'employee').toLowerCase(),
+      isActive: e.isActive !== 'false' && e.isActive !== false,
+      isVerified: e.isVerified !== 'false' && e.isVerified !== false,
       assignedAssessments: safeParseArray(e.assignedAssessments),
-      loginHistory:        [],
-      examStats:           safeParseObject(e.examStats) || {
+      loginHistory: [],
+      examStats: safeParseObject(e.examStats) || {
         totalAttempts: 0, totalPassed: 0, totalFailed: 0, avgScore: 0, totalTimeTaken: 0,
       },
-      createdAt:           e.createdAt || new Date().toISOString(),
-      updatedAt:           e.updatedAt || new Date().toISOString(),
+      createdAt: e.createdAt || new Date().toISOString(),
+      updatedAt: e.updatedAt || new Date().toISOString(),
     }));
 
 
@@ -217,20 +217,20 @@ function hydrateSheetsData(raw) {
   // ── assessments ──
   if (Array.isArray(raw.assessments)) {
     db.assessments = raw.assessments.map((a) => ({
-      _id:          a._id || generateId(),
-      title:        a.title || '',
-      description:  a.description || '',
-      duration:     Number(a.duration) || 30,
+      _id: a._id || generateId(),
+      title: a.title || '',
+      description: a.description || '',
+      duration: Number(a.duration) || 30,
       passingScore: Number(a.passingScore) || 60,
-      category:     a.category || 'General',
-      status:       a.status || 'draft',
-      maxViolations:Number(a.maxViolations) || 3,
+      category: a.category || 'General',
+      status: a.status || 'draft',
+      maxViolations: Number(a.maxViolations) || 3,
       isRandomized: a.isRandomized === 'true' || a.isRandomized === true,
-      questions:    safeParseArray(a.questions),
-      assignedTo:   safeParseArray(a.assignedTo),
-      createdBy:    a.createdBy || '',
-      createdAt:    a.createdAt || new Date().toISOString(),
-      updatedAt:    a.updatedAt || new Date().toISOString(),
+      questions: safeParseArray(a.questions),
+      assignedTo: safeParseArray(a.assignedTo),
+      createdBy: a.createdBy || '',
+      createdAt: a.createdAt || new Date().toISOString(),
+      updatedAt: a.updatedAt || new Date().toISOString(),
     }));
   }
 
@@ -242,9 +242,9 @@ function hydrateSheetsData(raw) {
         [q.option1, q.option2, q.option3, q.option4].forEach((txt, idx) => {
           if (txt !== undefined && txt !== '') {
             options.push({
-              text:      txt,
+              text: txt,
               isCorrect: Number(q.correctOptionIndex) === idx ||
-                         String(q.correctAnswer) === idx.toString(),
+                String(q.correctAnswer) === idx.toString(),
             });
           }
         });
@@ -252,16 +252,16 @@ function hydrateSheetsData(raw) {
         options.push(...safeParseArray(q.options));
       }
       return {
-        _id:        q._id || generateId(),
-        title:      q.title || q.question || '',
-        type:       q.type || 'mcq',
+        _id: q._id || generateId(),
+        title: q.title || q.question || '',
+        type: q.type || 'mcq',
         options,
-        marks:      Number(q.marks) || 1,
+        marks: Number(q.marks) || 1,
         difficulty: q.difficulty || 'medium',
-        explanation:q.explanation || '',
-        createdBy:  q.createdBy || '',
+        explanation: q.explanation || '',
+        createdBy: q.createdBy || '',
         assessment: q.assessmentId || q.assessment || '',
-        createdAt:  q.createdAt || new Date().toISOString(),
+        createdAt: q.createdAt || new Date().toISOString(),
       };
     });
   }
@@ -269,37 +269,37 @@ function hydrateSheetsData(raw) {
   // ── results ──
   if (Array.isArray(raw.results)) {
     db.results = raw.results.map((r) => ({
-      _id:             r._id || generateId(),
-      employee:        r.employeeMongoId || r.employeeId || '',
-      employeeName:    r.employeeName || '',
-      employeeEmail:   r.employeeEmail || r.email || '',
-      assessment:      r.assessmentId || '',
-      totalScore:      Number(r.totalScore)     || 0,
-      totalMarks:      Number(r.totalMarks)     || 0,
-      percentage:      Number(r.percentage)     || 0,
-      passed:          r.passed === 'true'      || r.passed === true,
-      status:          r.status                || 'submitted',
-      violationCount:  Number(r.violationCount) || 0,
-      completionTime:  Number(r.completionTime) || 0,
-      startedAt:       r.startedAt             || '',
-      submittedAt:     r.submittedAt           || '',
-      autoSubmitReason:r.autoSubmitReason      || null,
-      answers:         safeParseArray(r.answers),
-      createdAt:       r.createdAt             || new Date().toISOString(),
+      _id: r._id || generateId(),
+      employee: r.employeeMongoId || r.employeeId || '',
+      employeeName: r.employeeName || '',
+      employeeEmail: r.employeeEmail || r.email || '',
+      assessment: r.assessmentId || '',
+      totalScore: Number(r.totalScore) || 0,
+      totalMarks: Number(r.totalMarks) || 0,
+      percentage: Number(r.percentage) || 0,
+      passed: r.passed === 'true' || r.passed === true,
+      status: r.status || 'submitted',
+      violationCount: Number(r.violationCount) || 0,
+      completionTime: Number(r.completionTime) || 0,
+      startedAt: r.startedAt || '',
+      submittedAt: r.submittedAt || '',
+      autoSubmitReason: r.autoSubmitReason || null,
+      answers: safeParseArray(r.answers),
+      createdAt: r.createdAt || new Date().toISOString(),
     }));
   }
 
   // ── violations ──
   if (Array.isArray(raw.violations)) {
     db.violations = raw.violations.map((v) => ({
-      _id:        v._id || generateId(),
-      employee:   v.employeeMongoId || v.employeeId || '',
+      _id: v._id || generateId(),
+      employee: v.employeeMongoId || v.employeeId || '',
       assessment: v.assessmentId || '',
-      result:     v.resultId || '',
-      type:       v.type || '',
-      description:v.description || '',
-      severity:   v.severity || 'medium',
-      timestamp:  v.timestamp || new Date().toISOString(),
+      result: v.resultId || '',
+      type: v.type || '',
+      description: v.description || '',
+      severity: v.severity || 'medium',
+      timestamp: v.timestamp || new Date().toISOString(),
     }));
   }
 
@@ -317,19 +317,19 @@ function matchesQuery(item, query) {
     const itemVal = item[key];
     if (val === null || val === undefined) return itemVal == null;
     if (typeof val === 'boolean') return itemVal === val || String(itemVal) === String(val);
-    
+
     if (val && typeof val === 'object') {
       if (val.$regex) {
         const regex = new RegExp(val.$regex, val.$options || 'i');
         return regex.test(String(itemVal || ''));
       }
-      if (val.$in)  return val.$in.some((v) => String(itemVal) === String(v));
+      if (val.$in) return val.$in.some((v) => String(itemVal) === String(v));
       if (val.$nin) return !val.$nin.some((v) => String(itemVal) === String(v));
-      if (val.$gt)  return Number(itemVal) > Number(val.$gt);
+      if (val.$gt) return Number(itemVal) > Number(val.$gt);
       if (val.$gte) return Number(itemVal) >= Number(val.$gte);
-      if (val.$lt)  return Number(itemVal) < Number(val.$lt);
+      if (val.$lt) return Number(itemVal) < Number(val.$lt);
       if (val.$lte) return Number(itemVal) <= Number(val.$lte);
-      if (val.$ne)  return String(itemVal) !== String(val.$ne);
+      if (val.$ne) return String(itemVal) !== String(val.$ne);
     }
     return String(itemVal) === String(val);
   });
@@ -378,8 +378,8 @@ class QueryChain {
       } else if (['assessment', 'employee', 'createdBy'].includes(targetPath)) {
         const colMap = {
           assessment: db.assessments,
-          employee:   db.employees,
-          createdBy:  db.employees,
+          employee: db.employees,
+          createdBy: db.employees,
         };
         const col = colMap[targetPath];
         if (col && result[targetPath]) {
@@ -419,7 +419,7 @@ class QueryChain {
     });
     return new QueryChain(sorted);
   }
-  slice()  { return this; }
+  slice() { return this; }
   limit(n) {
     if (!Array.isArray(this.data)) return this;
     return new QueryChain(this.data.slice(0, n));
@@ -444,27 +444,27 @@ class MockModel {
     Object.assign(this, data);
     if (!this._id) this._id = generateId();
     if (!this.assignedAssessments) this.assignedAssessments = [];
-    if (!this.loginHistory)        this.loginHistory        = [];
-    if (!this.questions)           this.questions           = [];
-    if (!this.options)             this.options             = [];
-    if (!this.assignedTo)          this.assignedTo          = [];
-    if (!this.violations)          this.violations          = [];
+    if (!this.loginHistory) this.loginHistory = [];
+    if (!this.questions) this.questions = [];
+    if (!this.options) this.options = [];
+    if (!this.assignedTo) this.assignedTo = [];
+    if (!this.violations) this.violations = [];
     if (!this.examStats) {
       this.examStats = { totalAttempts: 0, totalPassed: 0, totalFailed: 0, avgScore: 0, totalTimeTaken: 0 };
     }
   }
 
   static getCollection(name) {
-    const db     = readDB();
+    const db = readDB();
     const colName = name.toLowerCase() + 's';
     if (!db[colName]) { db[colName] = []; writeDB(db); }
     return db[colName];
   }
 
   static saveCollection(name, items) {
-    const db      = readDB();
+    const db = readDB();
     const colName = name.toLowerCase() + 's';
-    db[colName]   = items;
+    db[colName] = items;
     writeDB(db);
   }
 
@@ -476,8 +476,8 @@ class MockModel {
 
   async save() {
     const colName = this.constructor.name;
-    const col     = MockModel.getCollection(colName);
-    const idx     = col.findIndex((x) => x._id.toString() === this._id.toString());
+    const col = MockModel.getCollection(colName);
+    const idx = col.findIndex((x) => x._id.toString() === this._id.toString());
 
     if (!this.createdAt) this.createdAt = new Date().toISOString();
     this.updatedAt = new Date().toISOString();
@@ -488,7 +488,7 @@ class MockModel {
     }
 
     if (idx !== -1) col[idx] = plain;
-    else            col.push(plain);
+    else col.push(plain);
 
     MockModel.saveCollection(colName, col);
     return this;
@@ -503,14 +503,14 @@ class MockModel {
   }
 
   static findOne(query = {}) {
-    const list  = MockModel.getCollection(this.name);
+    const list = MockModel.getCollection(this.name);
     const found = list.find((item) => matchesQuery(item, query));
     return new QueryChain(found ? new this(found) : null);
   }
 
   static findById(id) {
     if (!id) return new QueryChain(null);
-    const list  = MockModel.getCollection(this.name);
+    const list = MockModel.getCollection(this.name);
     const found = list.find((item) => item._id.toString() === id.toString());
     return new QueryChain(found ? new this(found) : null);
   }
@@ -533,7 +533,7 @@ class MockModel {
 
   static async findByIdAndUpdate(id, update, options = {}) {
     const list = MockModel.getCollection(this.name);
-    const idx  = list.findIndex((item) => item._id.toString() === id.toString());
+    const idx = list.findIndex((item) => item._id.toString() === id.toString());
     if (idx === -1) return null;
 
     let item = { ...list[idx] };
@@ -576,7 +576,7 @@ class MockModel {
 
   static async findByIdAndDelete(id) {
     const list = MockModel.getCollection(this.name);
-    const idx  = list.findIndex((item) => item._id.toString() === id.toString());
+    const idx = list.findIndex((item) => item._id.toString() === id.toString());
     if (idx === -1) return null;
     const deleted = list.splice(idx, 1)[0];
     MockModel.saveCollection(this.name, list);
@@ -585,7 +585,7 @@ class MockModel {
 
   static async updateMany(query, update) {
     const list = MockModel.getCollection(this.name);
-    let count  = 0;
+    let count = 0;
     for (let i = 0; i < list.length; i++) {
       if (Object.keys(query).length > 0 && !matchesQuery(list[i], query)) continue;
       if (update.$addToSet) {
@@ -615,9 +615,9 @@ class MockModel {
       MockModel.saveCollection(this.name, []);
       return { deletedCount: 0 };
     }
-    const list     = MockModel.getCollection(this.name);
+    const list = MockModel.getCollection(this.name);
     const filtered = list.filter((item) => !matchesQuery(item, query));
-    const count    = list.length - filtered.length;
+    const count = list.length - filtered.length;
     MockModel.saveCollection(this.name, filtered);
     return { deletedCount: count };
   }
@@ -709,9 +709,9 @@ class MockModel {
               const src = typeof expr.$sum === 'number'
                 ? () => expr.$sum
                 : (it) => {
-                    const f = String(expr.$sum).replace('$', '');
-                    return Number(it[f]) || 0;
-                  };
+                  const f = String(expr.$sum).replace('$', '');
+                  return Number(it[f]) || 0;
+                };
               row[outField] = _items.reduce((s, it) => s + src(it), 0);
             } else if (expr.$avg !== undefined) {
               const f = String(expr.$avg).replace('$', '');
@@ -748,7 +748,7 @@ MockModel.comparePassword = async function (pwd) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123';
   if (this.email && this.email.toLowerCase() === adminEmail.toLowerCase() &&
-      (pwd === adminPassword || pwd.toLowerCase() === adminPassword.toLowerCase())) {
+    (pwd === adminPassword || pwd.toLowerCase() === adminPassword.toLowerCase())) {
     return true;
   }
   try {
@@ -756,7 +756,7 @@ MockModel.comparePassword = async function (pwd) {
     if (this.password && this.password.startsWith('$2')) {
       return await bcrypt.compare(pwd, this.password);
     }
-  } catch (_) {}
+  } catch (_) { }
   return pwd === this.password;
 };
 
@@ -764,7 +764,7 @@ MockModel.prototype.comparePassword = async function (pwd) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123';
   if (this.email && this.email.toLowerCase() === adminEmail.toLowerCase() &&
-      (pwd === adminPassword || pwd.toLowerCase() === adminPassword.toLowerCase())) {
+    (pwd === adminPassword || pwd.toLowerCase() === adminPassword.toLowerCase())) {
     return true;
   }
   try {
@@ -772,14 +772,14 @@ MockModel.prototype.comparePassword = async function (pwd) {
     if (this.password && this.password.startsWith('$2')) {
       return await bcrypt.compare(pwd, this.password);
     }
-  } catch (_) {}
+  } catch (_) { }
   return pwd === this.password;
 };
 
 // ── Schema mock ──────────────────────────────────────────────
 
 const SchemaMock = function () {
-  return { pre() {}, methods: {}, index() {} };
+  return { pre() { }, methods: {}, index() { } };
 };
 SchemaMock.Types = { ObjectId: String, Mixed: Object };
 
@@ -789,7 +789,7 @@ const mongooseMock = {
   Schema: SchemaMock,
 
   model(name) {
-    const CustomModel = class extends MockModel {};
+    const CustomModel = class extends MockModel { };
     Object.defineProperty(CustomModel, 'name', { value: name });
     return CustomModel;
   },
@@ -812,7 +812,7 @@ const mongooseMock = {
 
     try {
       console.log('📥 Loading database from Google Sheets...');
-      const res  = await fetch(`${SHEETS_URL}?action=getDatabase`, { cache: 'no-store' });
+      const res = await fetch(`${SHEETS_URL}?action=getDatabase`, { cache: 'no-store' });
       const json = await res.json();
 
       if (json && json.success && json.data) {
@@ -844,8 +844,8 @@ const mongooseMock = {
 
 // ── Exports ──────────────────────────────────────────────────
 
-module.exports              = mongooseMock;
+module.exports = mongooseMock;
 module.exports.persistEntity = persistEntity;
-module.exports.sheetsPost   = sheetsPost;
-module.exports.sheetsGet    = sheetsGet;
-module.exports.readDB       = readDB;
+module.exports.sheetsPost = sheetsPost;
+module.exports.sheetsGet = sheetsGet;
+module.exports.readDB = readDB;
