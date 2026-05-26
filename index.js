@@ -1,3 +1,11 @@
+// ── Set default env vars BEFORE loading .env so server never crashes ──────
+// Render's environment variables will override these if set in the dashboard
+process.env.JWT_SECRET     = process.env.JWT_SECRET     || 'onlinetest_jwt_secret_2024_secure_key';
+process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+process.env.ADMIN_EMAIL    = process.env.ADMIN_EMAIL    || 'admin@gmail.com';
+process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123';
+process.env.NODE_ENV       = process.env.NODE_ENV       || 'production';
+
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
@@ -7,10 +15,10 @@ const path = require('path');
 
 // ── Startup diagnostics ─────────────────────────────────────
 console.log('🔍 ENV CHECK:');
-console.log('  JWT_SECRET:', process.env.JWT_SECRET ? '✅ SET' : '❌ MISSING (using fallback)');
-console.log('  GOOGLE_SHEET_URL:', process.env.GOOGLE_SHEET_URL ? '✅ SET' : '❌ MISSING (memory-only mode)');
-console.log('  ADMIN_EMAIL:', process.env.ADMIN_EMAIL || 'admin@gmail.com (default)');
-console.log('  NODE_ENV:', process.env.NODE_ENV || 'not set');
+console.log('  JWT_SECRET:', process.env.JWT_SECRET ? '✅ SET' : '❌ MISSING');
+console.log('  GOOGLE_SHEET_URL:', process.env.GOOGLE_SHEET_URL ? '✅ SET' : '⚠️  Not set (memory-only mode)');
+console.log('  ADMIN_EMAIL:', process.env.ADMIN_EMAIL);
+console.log('  NODE_ENV:', process.env.NODE_ENV);
 console.log('  PORT:', process.env.PORT || '5000 (default)');
 
 
