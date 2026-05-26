@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, X, ArrowLeft, CheckCircle, Upload, Sparkles, Loader2, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import CopyButton from '../../components/CopyButton';
 
 const TYPES = ['mcq', 'multiple-select', 'true-false', 'coding'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
@@ -238,6 +239,7 @@ const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
                   <span className={`badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}`}>{q.difficulty}</span>
                   <span className="badge badge-primary">{q.type}</span>
                   <span className="badge badge-info">{q.marks} marks</span>
+                  <CopyButton text={`Question:\n${q.title}\n\nOptions:\n${q.options?.map((o, idx) => `${String.fromCharCode(65 + idx)}) ${o.text}${o.isCorrect ? ' (Correct)' : ''}`).join('\n')}\n\nMarks: ${q.marks}`} />
                 </div>
                 <p style={{ fontSize: 15, color: 'var(--text-primary)', fontWeight: 500, marginBottom: 10 }}>{q.title}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
