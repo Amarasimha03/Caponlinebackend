@@ -2,7 +2,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env'), override: true });
 
 // ── Hardcoded fallbacks — only used if NOT set in .env OR Render dashboard ─────────
-const GOOGLE_SHEET_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbx3AnqjtgZDFUYc3XrRNmvMIpfjQKcenuySRcRzzJf5DUVfRNs6CPAOE8_Yy8OmxJpZfg/exec';
+const GOOGLE_SHEET_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzft5vbmCGEEhpnfbHtl-tAGxewJwB6H5wYV6XDoV4i/exec';
 process.env.JWT_SECRET        = process.env.JWT_SECRET        || 'onlinetest_jwt_secret_2024_secure_key';
 process.env.JWT_EXPIRES_IN    = process.env.JWT_EXPIRES_IN    || '7d';
 process.env.ADMIN_EMAIL       = process.env.ADMIN_EMAIL       || 'admin@gmail.com';
