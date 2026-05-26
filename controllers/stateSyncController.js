@@ -66,7 +66,9 @@ exports.getSession = async (req, res) => {
   try {
     const { userId } = req.params;
     const result = await sheetsGet({ action: 'getSession', userId });
-    if (!result?.success) return res.status(404).json({ success: false, message: 'No session found' });
+    // Return 200 even when not found — missing session is normal (first login etc.)
+    // Returning 404 causes Axios to throw, polluting the console unnecessarily
+    if (!result?.success) return res.json({ success: false, message: 'No session found' });
     res.json({ success: true, session: result.session });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
