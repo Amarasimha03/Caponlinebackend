@@ -1,7 +1,7 @@
 // controllers/stateSyncController.js
 // Bridges Express API <-> Google Apps Script for persistent state
 
-const SHEETS_URL = process.env.GOOGLE_APPS_SCRIPT_STATE_URL || process.env.GOOGLE_SHEET_URL || 'https://script.google.com/macros/s/AKfycbzft5vbmCGEEhpnfbHtl-tAGxewJwB6H5wYV6XDoV4i/exec';
+const SHEETS_URL = process.env.GOOGLE_APPS_SCRIPT_STATE_URL || process.env.GOOGLE_SHEET_URL || 'https://script.google.com/macros/s/AKfycbym7iq92Lv6Ia3J1EeO1A8shHhaTBR-j7zGVYhn35pjgLQAowYnpVRAsLKjU3tNToNecA/exec';
 
 const sheetsPost = async (payload) => {
   if (!SHEETS_URL) {
