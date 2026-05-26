@@ -6,8 +6,10 @@ import api from '../../services/api';
 
 const DEPARTMENTS = ['General', 'Engineering', 'Marketing', 'HR', 'Finance', 'Operations', 'Sales', 'IT', 'Legal'];
 const ROLES = ['employee', 'admin'];
+const DESIGNATIONS = ['Software Engineer', 'Senior Software Engineer', 'Digital Marketing', 'Full Stack Developer', 'Frontend Developer', 'Backend Developer', 'QA Engineer', 'DevOps Engineer', 'Data Analyst', 'Project Manager', 'UI/UX Designer', 'Business Analyst', 'HR Executive', 'Accountant', 'Sales Executive', 'Team Lead', 'Intern'];
+const COMPANIES = ['Cabptiod Solutions', 'TCS', 'Infosys', 'Wipro', 'HCL Technologies', 'Tech Mahindra', 'Cognizant', 'Accenture'];
 
-const defaultForm = { fullName: '', employeeId: '', email: '', phone: '', department: 'General', role: 'employee', password: '', status: 'Active' };
+const defaultForm = { fullName: '', employeeId: '', email: '', phone: '', department: 'General', designation: 'Software Engineer', designationCustom: '', company: 'Cabptiod Solutions', companyCustom: '', role: 'employee', password: '', status: 'Active' };
 
 export default function AdminEmployees() {
   const [employees, setEmployees] = useState([]);
@@ -150,11 +152,20 @@ export default function AdminEmployees() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // Resolve "Other" dropdown values to custom text
+      const payload = {
+        ...form,
+        designation: form.designation === 'Other' ? form.designationCustom : form.designation,
+        company: form.company === 'Other' ? form.companyCustom : form.company,
+      };
+      delete payload.designationCustom;
+      delete payload.companyCustom;
+
       if (editing) {
-        await api.put(`/employees/${editing._id}`, form);
+        await api.put(`/employees/${editing._id}`, payload);
         toast.success('Employee updated successfully');
       } else {
-        await api.post('/employees', form);
+        await api.post('/employees', payload);
         toast.success('Employee created & synced to Google Sheets!');
       }
       setShowModal(false); setEditing(null);
@@ -172,12 +183,18 @@ export default function AdminEmployees() {
 
   const openEdit = (emp) => {
     setEditing(emp);
+    const desigInList = DESIGNATIONS.includes(emp.designation);
+    const compInList = COMPANIES.includes(emp.company);
     setForm({
       fullName: emp.fullName || '',
       employeeId: emp.employeeId || '',
       email: emp.email || '',
       phone: emp.phone || '',
       department: emp.department || 'General',
+      designation: desigInList ? emp.designation : 'Other',
+      designationCustom: desigInList ? '' : (emp.designation || ''),
+      company: compInList ? emp.company : 'Other',
+      companyCustom: compInList ? '' : (emp.company || ''),
       role: emp.role || 'employee',
       password: '',
       status: emp.isActive ? 'Active' : 'Inactive',
@@ -371,6 +388,42 @@ export default function AdminEmployees() {
                     <select className="form-input form-select" name="department" value={form.department} onChange={handleChange}>
                       {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
                     </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Designation</label>
+                    <select className="form-input form-select" name="designation" value={form.designation} onChange={handleChange}>
+                      {DESIGNATIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                      <option value="Other">✏️ Other (type manually)</option>
+                    </select>
+                    {form.designation === 'Other' && (
+                      <input
+                        className="form-input"
+                        name="designationCustom"
+                        value={form.designationCustom}
+                        onChange={handleChange}
+                        placeholder="Enter designation"
+                        style={{ marginTop: 8 }}
+                        required
+                      />
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Company Name</label>
+                    <select className="form-input form-select" name="company" value={form.company} onChange={handleChange}>
+                      {COMPANIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      <option value="Other">✏️ Other (type manually)</option>
+                    </select>
+                    {form.company === 'Other' && (
+                      <input
+                        className="form-input"
+                        name="companyCustom"
+                        value={form.companyCustom}
+                        onChange={handleChange}
+                        placeholder="Enter company name"
+                        style={{ marginTop: 8 }}
+                        required
+                      />
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Role</label>
