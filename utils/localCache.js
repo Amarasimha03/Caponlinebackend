@@ -95,15 +95,22 @@ async function sheetsGet(params) {
 }
 
 /**
- * Persist a single entity change to Google Sheets without blocking.
- * Failures are logged but never crash the server.
+ * Persist a single entity change to Google Sheets.
+ * Returns a Promise — callers can await to confirm success.
+ * Throws on failure so callers can catch and log.
  */
-function persistEntity(action, payload) {
+async function persistEntity(action, payload) {
   const SHEETS_URL = getSheetsUrl();
-  if (!SHEETS_URL) return;
-  sheetsPost({ action, ...payload }).catch((err) =>
-    console.error('[persistEntity]', action, err.message)
-  );
+  if (!SHEETS_URL) {
+    console.warn(`[persistEntity] GOOGLE_SHEET_URL not set — ${action} not persisted to Sheets`);
+    return null;
+  }
+  console.log(`[persistEntity] → ${action}`, JSON.stringify(payload).slice(0, 120));
+  const result = await sheetsPost({ action, ...payload });
+  if (!result) throw new Error('No response from Google Sheets (network error or auth issue)');
+  if (result.success === false) throw new Error(`Sheets error: ${result.message || JSON.stringify(result)}`);
+  console.log(`[persistEntity] ← ${action} OK`);
+  return result;
 }
 
 // ── Startup: load entire DB from Google Sheets ───────────────

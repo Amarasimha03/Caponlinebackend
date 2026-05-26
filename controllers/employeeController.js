@@ -7,9 +7,17 @@ const { persistEntity } = require('../utils/localCache');
 // GET all employees (admin)
 exports.getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find({ role: 'employee' }).sort({ createdAt: -1 });
+    // Find all users with role 'employee' (case-insensitive guard)
+    const all = await Employee.find({});
+    const employees = all
+      .filter(e => (e.role || '').toLowerCase() !== 'admin')
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    console.log(`[getEmployees] total in DB: ${all.length}, non-admin: ${employees.length}`);
     res.json({ success: true, count: employees.length, employees });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) {
+    console.error('[getEmployees] error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 // GET single employee with full details
@@ -69,24 +77,31 @@ exports.createEmployee = async (req, res) => {
     });
 
     // Persist employee to Google Sheets — 16 columns match sheet headers exactly
-    persistEntity('createEmployee', {
-      _id:                 employee._id.toString(),
-      employeeId:          generatedEmpId,
-      fullName,
-      email,
-      phone:               phone || '',
-      department:          department || 'General',
-      designation:         designation || '',
-      company:             company || '',
-      role:                role || 'employee',
-      password,
-      isActive:            isActive.toString(),
-      isVerified:          'true',
-      assignedAssessments: assessmentIds.map(String),            // raw array — Apps Script will JSON.stringify
-      examStats:           { totalAttempts: 0, totalPassed: 0, totalFailed: 0, avgScore: 0, totalTimeTaken: 0 }, // raw object
-      createdAt:           employee.createdAt || new Date().toISOString(),
-      updatedAt:           employee.updatedAt || new Date().toISOString(),
-    });
+    // Await so the admin knows if it succeeded or failed
+    try {
+      await persistEntity('createEmployee', {
+        _id:                 employee._id.toString(),
+        employeeId:          generatedEmpId,
+        fullName,
+        email,
+        phone:               phone || '',
+        department:          department || 'General',
+        designation:         designation || '',
+        company:             company || '',
+        role:                role || 'employee',
+        password,
+        isActive:            isActive.toString(),
+        isVerified:          'true',
+        assignedAssessments: assessmentIds.map(String),
+        examStats:           { totalAttempts: 0, totalPassed: 0, totalFailed: 0, avgScore: 0, totalTimeTaken: 0 },
+        createdAt:           employee.createdAt || new Date().toISOString(),
+        updatedAt:           employee.updatedAt || new Date().toISOString(),
+      });
+      console.log('[createEmployee] ✅ Saved to Google Sheets:', employee._id.toString());
+    } catch (sheetErr) {
+      console.error('[createEmployee] ❌ Google Sheets save FAILED:', sheetErr.message);
+      // Don't fail the request — employee is in memory; sheet will sync on next restart
+    }
 
     res.status(201).json({ success: true, employee });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }

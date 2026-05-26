@@ -82,11 +82,16 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api', limiter);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Initialize high‑speed local cache
-localCache
-  .connect()
-  .then(() => console.log('✅ Server Local Cache Initialized'))
-  .catch((err) => console.error('❌ Cache Error:', err));
+// Initialize DB from Google Sheets BEFORE accepting any requests
+async function startServer() {
+  try {
+    await localCache.connect();
+    const { readDB } = require('./utils/localCache');
+    const db = readDB();
+    console.log(`✅ Google Sheets DB loaded — employees: ${db.employees?.length||0}, questions: ${db.questions?.length||0}, assessments: ${db.assessments?.length||0}, results: ${db.results?.length||0}, violations: ${db.violations?.length||0}, auditlogs: ${db.auditLogs?.length||0}`);
+  } catch (err) {
+    console.error('❌ DB connect failed, using seed-only state:', err.message);
+  }
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -371,7 +376,53 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+  // ── Debug: see exactly what's in in-memory DB right now ─────
+  app.get('/api/debug-db', protect, adminOnly, (req, res) => {
+    const { readDB } = require('./utils/localCache');
+    const db = readDB();
+    const empSample = (db.employees || []).slice(0, 3).map(e => ({
+      _id: e._id, role: e.role, fullName: e.fullName, isActive: e.isActive
+    }));
+    res.json({
+      success: true,
+      sheetsUrl: process.env.GOOGLE_SHEET_URL ? '✅ set' : '❌ MISSING',
+      counts: {
+        employees:   db.employees?.length   || 0,
+        assessments: db.assessments?.length || 0,
+        questions:   db.questions?.length   || 0,
+        results:     db.results?.length     || 0,
+        violations:  db.violations?.length  || 0,
+      },
+      employeeSample: empSample,
+      roleBreakdown: {
+        employee: (db.employees||[]).filter(e => e.role === 'employee').length,
+        admin:    (db.employees||[]).filter(e => e.role === 'admin').length,
+        other:    (db.employees||[]).filter(e => e.role !== 'employee' && e.role !== 'admin').length,
+      }
+    });
+  });
+
+  // ── Test Google Sheets connectivity ─────────────────────────
+  app.get('/api/test-sheets', protect, adminOnly, async (req, res) => {
+    const SHEETS_URL = process.env.GOOGLE_SHEET_URL;
+    if (!SHEETS_URL) return res.json({ success: false, message: 'GOOGLE_SHEET_URL not set' });
+    try {
+      const url = new URL(SHEETS_URL);
+      url.searchParams.set('action', 'getDatabase');
+      const r = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
+      const text = await r.text();
+      let parsed;
+      try { parsed = JSON.parse(text); } catch { parsed = { raw: text.slice(0, 300) }; }
+      res.json({ success: true, status: r.status, url: SHEETS_URL, response: parsed });
+    } catch (err) {
+      res.json({ success: false, url: SHEETS_URL, error: err.message });
+    }
+  });
+
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
+
+startServer();
