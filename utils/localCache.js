@@ -55,25 +55,48 @@ function writeDB(data) { IN_MEMORY_DB = data; }
 // ── Google Sheets helpers ─────────────────────────────────────
 
 /**
+ * Parse a Response safely — detects HTML auth pages from Google.
+ */
+async function safeParseResponse(res, action) {
+  const text = await res.text();
+  if (text.trim().startsWith('<')) {
+    // Google returned an HTML page — Apps Script not deployed as public web app
+    console.error(
+      `[Sheets] ❌ Got HTML instead of JSON for action "${action}".\n` +
+      `  This means the Apps Script is NOT deployed as a public web app.\n` +
+      `  Fix: In Google Apps Script → Deploy → Manage Deployments → Edit → Who has access: Anyone → Save.\n` +
+      `  URL used: ${getSheetsUrl()}`
+    );
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error(`[Sheets] ❌ JSON parse failed for "${action}":`, text.slice(0, 200));
+    return null;
+  }
+}
+
+/**
  * POST a payload to Google Apps Script.
  * Returns the parsed JSON response, or null on failure.
  */
 async function sheetsPost(payload) {
   const SHEETS_URL = getSheetsUrl();
   if (!SHEETS_URL) return null;
+  const action = payload?.action || 'unknown';
   try {
     const url = new URL(SHEETS_URL);
-    if (payload && payload.action) {
-      url.searchParams.set('action', payload.action);
-    }
+    url.searchParams.set('action', action);
     const res = await fetch(url.toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      redirect: 'follow',
     });
-    return await res.json();
+    return await safeParseResponse(res, action);
   } catch (err) {
-    console.error('[Sheets POST error]', payload ? payload.action : 'unknown', err.message);
+    console.error(`[Sheets POST] ❌ ${action}:`, err.message);
     return null;
   }
 }
@@ -84,33 +107,49 @@ async function sheetsPost(payload) {
 async function sheetsGet(params) {
   const SHEETS_URL = getSheetsUrl();
   if (!SHEETS_URL) return null;
+  const action = params?.action || 'unknown';
   try {
     const qs  = new URLSearchParams(params).toString();
-    const res = await fetch(`${SHEETS_URL}?${qs}`, { cache: 'no-store' });
-    return await res.json();
+    const res = await fetch(`${SHEETS_URL}?${qs}`, {
+      cache: 'no-store',
+      redirect: 'follow',
+    });
+    return await safeParseResponse(res, action);
   } catch (err) {
-    console.error('[Sheets GET error]', params.action, err.message);
+    console.error(`[Sheets GET] ❌ ${action}:`, err.message);
     return null;
   }
 }
 
 /**
  * Persist a single entity change to Google Sheets.
- * Returns a Promise — callers can await to confirm success.
- * Throws on failure so callers can catch and log.
+ * ALWAYS resolves (never throws) — safe for fire-and-forget calls.
+ * Returns { ok: true } on success, { ok: false, error } on failure.
+ * Callers that await it can check result.ok to know if Sheets was updated.
  */
 async function persistEntity(action, payload) {
   const SHEETS_URL = getSheetsUrl();
   if (!SHEETS_URL) {
-    console.warn(`[persistEntity] GOOGLE_SHEET_URL not set — ${action} not persisted to Sheets`);
-    return null;
+    console.warn(`[persistEntity] ⚠️  GOOGLE_SHEET_URL not set — ${action} skipped`);
+    return { ok: false, error: 'GOOGLE_SHEET_URL not configured' };
   }
-  console.log(`[persistEntity] → ${action}`, JSON.stringify(payload).slice(0, 120));
-  const result = await sheetsPost({ action, ...payload });
-  if (!result) throw new Error('No response from Google Sheets (network error or auth issue)');
-  if (result.success === false) throw new Error(`Sheets error: ${result.message || JSON.stringify(result)}`);
-  console.log(`[persistEntity] ← ${action} OK`);
-  return result;
+  console.log(`[persistEntity] → ${action}`, JSON.stringify(payload).slice(0, 150));
+  try {
+    const result = await sheetsPost({ action, ...payload });
+    if (!result) {
+      console.error(`[persistEntity] ← ${action} FAILED — no response (network/auth issue)`);
+      return { ok: false, error: 'No response from Google Sheets' };
+    }
+    if (result.success === false) {
+      console.error(`[persistEntity] ← ${action} FAILED — ${result.message || JSON.stringify(result)}`);
+      return { ok: false, error: result.message || 'Sheets returned success:false' };
+    }
+    console.log(`[persistEntity] ← ${action} ✅ OK`);
+    return { ok: true, data: result };
+  } catch (err) {
+    console.error(`[persistEntity] ← ${action} ERROR:`, err.message);
+    return { ok: false, error: err.message };
+  }
 }
 
 // ── Startup: load entire DB from Google Sheets ───────────────
