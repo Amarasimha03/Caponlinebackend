@@ -154,6 +154,7 @@ export default function ExamPage() {
     return () => {
       socketRef.current?.off('connect', handleConnect);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, user, assessmentId]);
 
   // Re-bind webcam stream to the newly mounted video element when entering the exam phase
