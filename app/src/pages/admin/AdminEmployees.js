@@ -378,6 +378,22 @@ export default function AdminEmployees() {
                       {ROLES.map(r => <option key={r}>{r}</option>)}
                     </select>
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">Status</label>
+                    <select
+                      className="form-input form-select"
+                      name="status"
+                      value={form.status}
+                      onChange={handleChange}
+                      style={{
+                        color: form.status === 'Active' ? '#10b981' : '#f59e0b',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <option value="Active">🟢 Active</option>
+                      <option value="Inactive">🟡 Inactive</option>
+                    </select>
+                  </div>
                   {!editing && (
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
                       <label className="form-label">Password * (min 6 chars)</label>
