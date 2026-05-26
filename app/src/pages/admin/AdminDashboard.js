@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, FileText, CheckCircle, TrendingUp, AlertTriangle, Clock, Award, BarChart3 } from 'lucide-react';
+import { Users, FileText, CheckCircle, TrendingUp, AlertTriangle, Clock, Award, BarChart3, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -9,23 +9,40 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [statsRes, analyticsRes, violRes] = await Promise.all([
-          api.get('/assessments/stats'),
-          api.get('/results/analytics'),
-          api.get('/violations/stats'),
-        ]);
-        setStats(statsRes.data.stats);
-        setAnalytics(analyticsRes.data.analytics);
-        setViolations(violRes.data.stats || []);
-      } catch (err) { console.error(err); }
-      setLoading(false);
-    };
-    load();
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statsRes, analyticsRes, violRes] = await Promise.all([
+        api.get('/assessments/stats'),
+        api.get('/results/analytics'),
+        api.get('/violations/stats'),
+      ]);
+      setStats(statsRes.data.stats);
+      setAnalytics(analyticsRes.data.analytics);
+      setViolations(violRes.data.stats || []);
+    } catch (err) { console.error(err); }
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMsg('');
+    try {
+      const res = await api.post('/sync-db');
+      const { counts } = res.data;
+      setSyncMsg(`✅ Synced: ${counts.employees} employees, ${counts.assessments} assessments, ${counts.results} results`);
+      await load(); // reload dashboard stats
+    } catch (err) {
+      setSyncMsg('❌ Sync failed: ' + (err.response?.data?.message || err.message));
+    }
+    setSyncing(false);
+    setTimeout(() => setSyncMsg(''), 6000);
+  };
 
   if (loading) return <div className="loading-center"><div className="loading-spinner" /></div>;
 
@@ -44,9 +61,29 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Dashboard Overview</h1>
-        <p>Real-time overview of your assessment platform</p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1>Dashboard Overview</h1>
+          <p>Real-time overview of your assessment platform</p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: syncing ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.15)',
+              border: '1px solid rgba(99,102,241,0.4)',
+              color: '#818cf8', borderRadius: 8, padding: '8px 16px',
+              cursor: syncing ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
+              transition: 'all 0.2s',
+            }}
+          >
+            <RefreshCw size={15} style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
+            {syncing ? 'Syncing...' : 'Sync from Google Sheets'}
+          </button>
+          {syncMsg && <span style={{ fontSize: 12, color: syncMsg.startsWith('✅') ? '#10b981' : '#ef4444' }}>{syncMsg}</span>}
+        </div>
       </div>
 
       {/* Stats */}
