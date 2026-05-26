@@ -8,7 +8,8 @@
     "install:frontend": "cd app && npm install",
     "build:frontend": "node -e \"process.env.CI='false'; process.env.GENERATE_SOURCEMAP='false'; const cp = require('child_process'); cp.execSync('npm run build', { cwd: 'app', stdio: 'inherit' });\"",
     "build": "npm run install:server && npm run install:frontend && npm run build:frontend && node copy-build.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "sync": "node git-sync.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
