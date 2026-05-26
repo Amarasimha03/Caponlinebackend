@@ -33,7 +33,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     let { email, password } = req.body;
-    
+
     // Shorthand for admin login
     if (email.toLowerCase() === 'admin') {
       email = process.env.ADMIN_EMAIL || 'admin@gmail.com';
