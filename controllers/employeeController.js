@@ -155,6 +155,8 @@ exports.deleteEmployee = async (req, res) => {
 
     // Audit
     if (employee) {
+      persistEntity('deleteEntity', { sheetName: 'employees', _id: req.params.id }).catch(()=>{});
+
       await AuditLog.create({
         user: req.user._id, action: 'employee-deactivated',
         description: `Deleted employee: ${employee.fullName} (${employee.email})`,
