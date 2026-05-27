@@ -17,10 +17,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
+    // Avoid aggressive global logout on generic 401 responses.
+    // Legitimate session expirations are caught and handled during profile fetching in useAuthStore.
     return Promise.reject(err);
   }
 );
