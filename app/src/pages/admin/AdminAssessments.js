@@ -29,15 +29,25 @@ export default function AdminAssessments() {
   const navigate = useNavigate();
   const [form, setForm] = useState(defaultForm);
 
-  const load = async () => {
+  const load = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const [aRes, eRes] = await Promise.all([api.get('/assessments'), api.get('/employees')]);
       setAssessments(aRes.data.assessments || []);
       setEmployees(eRes.data.employees || []);
-    } catch { toast.error('Failed to load data'); }
-    setLoading(false);
+    } catch {
+      if (!isBackground) toast.error('Failed to load data');
+    }
+    if (!isBackground) setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const intervalId = setInterval(() => {
+      console.log('[AdminAssessments] Polling fresh data from server...');
+      load(true);
+    }, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleChange = (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
