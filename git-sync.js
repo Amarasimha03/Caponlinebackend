@@ -32,10 +32,10 @@ function syncRepo() {
     if (file) modifiedFiles.push(file);
   }
 
-  let commitMessage = 'update: synchronized project files';
+  let commitMessage = `Auto update at ${new Date().toLocaleString()}: synchronized project files`;
   if (modifiedFiles.length > 0) {
     const fileNames = modifiedFiles.map(f => f.split(/[/\\]/).pop());
-    commitMessage = `fix/update: modified ${fileNames.slice(0, 3).join(', ')}${fileNames.length > 3 ? ' and other files' : ''}`;
+    commitMessage = `Auto update at ${new Date().toLocaleString()} - modified ${fileNames.slice(0, 3).join(', ')}${fileNames.length > 3 ? ' and other files' : ''}`;
   }
 
   console.log('🚀 [GitSync] Staging files (git add .)...');
@@ -52,22 +52,32 @@ function syncRepo() {
     return;
   }
 
-  console.log('📤 [GitSync] Pushing to remote (git push origin main)...');
+  console.log('📤 [GitSync] Pushing to frontend remote (git push origin main)...');
   const pushRes = runCommand('git push origin main');
   if (pushRes.error) {
-    console.error('❌ [GitSync Error] Git push failed:', pushRes.message);
-    // If the push fails because the branch was modified on remote, notify
+    console.error('❌ [GitSync Error] Git push to origin failed:', pushRes.message);
     if (pushRes.message.includes('rejected') || pushRes.message.includes('fetch first')) {
-      console.warn('⚠️ [GitSync Warning] Push rejected. Retrying with force-push to align branches...');
-      const forcePushRes = runCommand('git push origin main --force');
-      if (forcePushRes.error) {
-        console.error('❌ [GitSync Error] Force push failed:', forcePushRes.message);
-      } else {
-        console.log('✅ [GitSync] Force-push successful! Synced with GitHub remote.');
+      console.warn('⚠️ [GitSync Warning] Push rejected. Retrying with force-push...');
+      runCommand('git push origin main --force');
+    }
+  } else {
+    console.log('✅ [GitSync] Push to frontend successful!');
+  }
+
+  console.log('📤 [GitSync] Pushing server folder to backend remote (git subtree push)...');
+  // Use subtree push to push only the server directory to the backend repository
+  const pushBackendRes = runCommand('git subtree push --prefix server backend main');
+  if (pushBackendRes.error) {
+    console.error('❌ [GitSync Error] Git subtree push to backend failed:', pushBackendRes.message);
+    if (pushBackendRes.message.includes('rejected') || pushBackendRes.message.includes('fetch first')) {
+      console.warn('⚠️ [GitSync Warning] Backend push rejected. Retrying with force-push...');
+      const splitRes = runCommand('git subtree split --prefix server main');
+      if (!splitRes.error && splitRes.trim()) {
+        runCommand(`git push backend ${splitRes.trim()}:main --force`);
       }
     }
   } else {
-    console.log('✅ [GitSync] Push successful! Repository fully synchronized with GitHub.');
+    console.log('✅ [GitSync] Push to backend successful!');
   }
 }
 
