@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Clock, CheckCircle, Play, Award, TrendingUp, Bell, X, BookOpen, Calendar, Eye } from 'lucide-react';
@@ -87,13 +87,13 @@ export default function EmployeeDashboard() {
     return () => clearInterval(intervalId);
   }, [user?._id, user?.fullName, load]);
 
-  // Filter out invalid assessments (no _id = orphaned reference)
-  const validAssessments = assessments.filter(a => a._id && a.title);
-  const pending   = validAssessments.filter(a => a.status === 'pending');
-  const completed = validAssessments.filter(a => a.status === 'completed');
-  const avgScore  = completed.length
+  // Filter out invalid assessments (no _id = orphaned reference) — memoized for performance
+  const validAssessments = useMemo(() => assessments.filter(a => a._id && a.title), [assessments]);
+  const pending   = useMemo(() => validAssessments.filter(a => a.status === 'pending'),   [validAssessments]);
+  const completed = useMemo(() => validAssessments.filter(a => a.status === 'completed'), [validAssessments]);
+  const avgScore  = useMemo(() => completed.length
     ? Math.round(completed.reduce((s, a) => s + (a.result?.percentage || 0), 0) / completed.length)
-    : 0;
+    : 0, [completed]);
 
   if (loading && assessments.length === 0)
     return <div className="loading-center"><div className="loading-spinner" /></div>;
@@ -157,7 +157,7 @@ export default function EmployeeDashboard() {
           { icon: CheckCircle,label: 'Completed',   value: completed.length,        color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
           { icon: TrendingUp, label: 'Avg Score',   value: `${avgScore}%`,          color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)' },
         ].map((s, i) => (
-          <motion.div key={s.label} className="stat-card" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+          <motion.div key={s.label} className="stat-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.2 }}>
             <div className="stat-icon" style={{ background: s.bg }}><s.icon size={24} color={s.color} /></div>
             <div className="stat-info"><h3>{s.value}</h3><p>{s.label}</p></div>
           </motion.div>
@@ -185,7 +185,7 @@ export default function EmployeeDashboard() {
               </thead>
               <tbody>
                 {validAssessments.map((a, i) => (
-                  <motion.tr key={a._id || i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}>
+                  <motion.tr key={a._id || i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.025, duration: 0.15 }}>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{a.title}</div>
                       {a.description && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{a.description.substring(0, 50)}{a.description.length > 50 ? '…' : ''}</div>}
@@ -247,7 +247,7 @@ export default function EmployeeDashboard() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
             {completed.map((a, i) => (
-              <motion.div key={a._id || i} className="card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              <motion.div key={a._id || i} className="card" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03, duration: 0.18 }}
                 style={{ padding: '18px 20px' }}>
                 <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, marginBottom: 10 }}>{a.title}</div>
                 <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
