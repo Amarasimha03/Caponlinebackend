@@ -750,8 +750,12 @@ export default function ExamPage() {
       // 6. Disconnect socket for this exam session
       socketRef.current?.emit('exam:cancelled', { employeeId: user?._id, assessmentId });
 
-      // 7. Redirect to login and replace history to prevent back-button
-      navigate("/login", { replace: true });
+      // 7. Redirect to employee dashboard if user cancelled, otherwise redirect to login
+      if (reason === 'User Cancelled Exam') {
+        navigate("/employee/dashboard", { replace: true });
+      } else {
+        navigate("/login", { replace: true });
+      }
     } catch (err) {
       console.error("Auto submit failed:", err);
       // Cleanup even on failure
@@ -765,7 +769,11 @@ export default function ExamPage() {
       localStorage.removeItem('activeTest');
       localStorage.removeItem('examProgress');
       sessionStorage.removeItem('examActive');
-      navigate("/login", { replace: true });
+      if (reason === 'User Cancelled Exam') {
+        navigate("/employee/dashboard", { replace: true });
+      } else {
+        navigate("/login", { replace: true });
+      }
     }
   };
 
