@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BarChart3, Download, Trophy } from 'lucide-react';
+import { BarChart3, Download, Trophy, Eye } from 'lucide-react';
 import api from '../../services/api';
 
 export default function AdminResults() {
+  const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [assessments, setAssessments] = useState([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const load = async () => {
@@ -15,7 +18,7 @@ export default function AdminResults() {
         const [rRes, aRes] = await Promise.all([api.get('/results'), api.get('/assessments')]);
         setResults(rRes.data.results);
         setAssessments(aRes.data.assessments);
-      } catch {}
+      } catch { }
       setLoading(false);
     };
     load();
@@ -66,6 +69,7 @@ export default function AdminResults() {
                 <th>Violations</th>
                 <th>Time</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -106,6 +110,15 @@ export default function AdminResults() {
                   <td><span className={`badge ${r.violationCount > 0 ? 'badge-warning' : 'badge-muted'}`}>{r.violationCount}</span></td>
                   <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{r.completionTime || '—'}m</td>
                   <td><span className={`badge ${r.status === 'submitted' ? 'badge-success' : r.status === 'disqualified' ? 'badge-danger' : 'badge-warning'}`}>{r.status}</span></td>
+                  <td>
+                    <button className="btn btn-ghost btn-sm" onClick={() => {
+                      const empId = r.employee?._id || r.employee;
+                      const examId = r.assessment?._id || r.assessment;
+                      navigate(`/admin/result/${empId}/${examId}`);
+                    }} title="View Question Analysis">
+                      <Eye size={16} />
+                    </button>
+                  </td>
                 </motion.tr>
               ))}
             </tbody>
@@ -119,6 +132,8 @@ export default function AdminResults() {
           </div>
         )}
       </div>
+
+
     </div>
   );
 }

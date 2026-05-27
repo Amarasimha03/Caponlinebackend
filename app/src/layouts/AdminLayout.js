@@ -10,7 +10,7 @@ import useMonitoringStore from '../store/monitoringStore';
 import { useEffect } from 'react';
 
 const NAV_ITEMS = [
-  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { path: '/admin/employees', icon: Users, label: 'Employees' },
   { path: '/admin/assessments', icon: FileText, label: 'Assessments' },
   { path: '/admin/results', icon: BarChart3, label: 'Reports' },

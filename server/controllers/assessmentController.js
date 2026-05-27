@@ -3,7 +3,7 @@ const Question = require('../models/Question');
 const Result = require('../models/Result');
 const Employee = require('../models/Employee');
 const AuditLog = require('../models/AuditLog');
-const { persistEntity } = require('../utils/localCache');
+const { persistEntity, IN_MEMORY_DB } = require('../utils/localCache');
 
 // GET all assessments (admin)
 exports.getAssessments = async (req, res) => {
@@ -73,6 +73,12 @@ exports.createAssessment = async (req, res) => {
     const employeeIds = employees.map(emp => emp._id);
     assessment.assignedTo = employeeIds;
     await assessment.save();
+    // Sync assessment to in-memory DB
+    if (IN_MEMORY_DB.assessments) {
+      IN_MEMORY_DB.assessments.push(assessment.toObject ? assessment.toObject() : { ...assessment });
+    } else {
+      IN_MEMORY_DB.assessments = [assessment.toObject ? assessment.toObject() : { ...assessment }];
+    }
 
     if (employeeIds.length > 0) {
       await Employee.updateMany(
@@ -194,6 +200,10 @@ exports.deleteAssessment = async (req, res) => {
   try {
     const assessment = await Assessment.findByIdAndDelete(req.params.id);
     await Question.deleteMany({ assessment: req.params.id });
+    // Remove from in-memory DB
+    if (IN_MEMORY_DB.assessments) {
+      IN_MEMORY_DB.assessments = IN_MEMORY_DB.assessments.filter(a => a._id.toString() !== req.params.id);
+    }
     if (assessment) {
       await AuditLog.create({
         user: req.user._id, action: 'assessment-deleted',
@@ -268,18 +278,43 @@ exports.submitExam = async (req, res) => {
       if (!question) return ans;
       let isCorrect = false;
       let marksObtained = 0;
+      let correctAnswerText = '';
+      let selectedAnswerText = '';
+
+      const optionsText = question.options.map(o => o.text);
+      const notAnswered = !ans.selectedOptions || ans.selectedOptions.length === 0;
+      
       if (question.type === 'mcq' || question.type === 'true-false') {
         const correctIdx = question.options.findIndex(o => o.isCorrect);
-        isCorrect = ans.selectedOptions?.[0] === correctIdx;
+        isCorrect = !notAnswered && ans.selectedOptions?.[0] === correctIdx;
         if (isCorrect) marksObtained = question.marks;
+        correctAnswerText = question.options[correctIdx]?.text || '';
+        selectedAnswerText = !notAnswered ? question.options[ans.selectedOptions[0]]?.text : 'Not Attempted';
       } else if (question.type === 'multiple-select') {
         const correctIdxs = question.options.map((o, i) => o.isCorrect ? i : null).filter(i => i !== null);
-        isCorrect = JSON.stringify(ans.selectedOptions?.sort()) === JSON.stringify(correctIdxs.sort());
+        isCorrect = !notAnswered && JSON.stringify(ans.selectedOptions?.sort()) === JSON.stringify(correctIdxs.sort());
         if (isCorrect) marksObtained = question.marks;
+        correctAnswerText = correctIdxs.map(i => question.options[i]?.text).join(', ');
+        selectedAnswerText = !notAnswered ? ans.selectedOptions.map(i => question.options[i]?.text).join(', ') : 'Not Attempted';
       }
+
       totalScore += marksObtained;
-      return { question: ans.questionId, selectedOptions: ans.selectedOptions, isCorrect, marksObtained, timeTaken: ans.timeTaken || 0 };
+      return { 
+        question: ans.questionId, 
+        questionText: question.title,
+        options: optionsText,
+        selectedOptions: ans.selectedOptions, 
+        selectedAnswer: selectedAnswerText,
+        correctAnswer: correctAnswerText,
+        isCorrect, 
+        notAnswered,
+        marksObtained, 
+        timeTaken: ans.timeTaken || 0 
+      };
     });
+
+    const correctAnswersCount = processedAnswers.filter(a => a.isCorrect).length;
+    const wrongAnswersCount = processedAnswers.length - correctAnswersCount;
 
     result.answers = processedAnswers;
     result.totalScore = totalScore;
@@ -289,10 +324,10 @@ exports.submitExam = async (req, res) => {
     result.submittedAt = new Date();
     result.completionTime = Math.round((result.submittedAt - result.startedAt) / 60000);
     result.autoSubmitReason = req.body.terminationReason || (req.body.autoSubmit ? 'violations' : null);
+    result.correctAnswers = correctAnswersCount;
+    result.wrongAnswers = wrongAnswersCount;
     await result.save();
 
-    const correctAnswersCount = processedAnswers.filter(a => a.isCorrect).length;
-    const wrongAnswersCount = processedAnswers.length - correctAnswersCount;
     const submissionType = req.body.autoSubmit ? 'Automatic' : 'Manual';
 
     // Persist final result to Google Sheets

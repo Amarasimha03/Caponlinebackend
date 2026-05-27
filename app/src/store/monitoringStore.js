@@ -134,6 +134,12 @@ const useMonitoringStore = create((set, get) => ({
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        if (pc.candidateQueue) {
+          for (const candidate of pc.candidateQueue) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Queued AddIceCandidate Error:", e));
+          }
+          pc.candidateQueue = [];
+        }
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit('webrtc:answer', { to: socketId, answer });
@@ -146,7 +152,12 @@ const useMonitoringStore = create((set, get) => ({
       const pc = peerConnections[data.employeeId];
       if (pc && data.candidate) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          } else {
+            if (!pc.candidateQueue) pc.candidateQueue = [];
+            pc.candidateQueue.push(data.candidate);
+          }
         } catch (err) {
           console.error('[MonitoringStore] AddIceCandidate error:', err);
         }

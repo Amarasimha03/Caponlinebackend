@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './store/authStore';
 
@@ -21,6 +21,11 @@ import ExamTerminatedPage from './pages/employee/ExamTerminatedPage';
 // Layout
 import AdminLayout from './layouts/AdminLayout';
 import EmployeeLayout from './layouts/EmployeeLayout';
+
+const NavigateToResult = () => {
+  const { examId } = useParams();
+  return <Navigate to={`/employee/result/${examId}`} replace />;
+};
 
 const ProtectedRoute = ({ children, role }) => {
   const { user, token, isLoading } = useAuthStore();
@@ -56,20 +61,27 @@ function App() {
 
         {/* Admin */}
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
-          <Route index element={<AdminDashboard />} />
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="employees" element={<AdminEmployees />} />
           <Route path="assessments" element={<AdminAssessments />} />
           <Route path="questions/:assessmentId" element={<AdminQuestions />} />
           <Route path="results" element={<AdminResults />} />
+          <Route path="result/:employeeId/:examId" element={<ResultPage />} />
           <Route path="violations" element={<AdminViolations />} />
           <Route path="monitoring" element={<AdminMonitoring />} />
         </Route>
 
         {/* Employee */}
-        <Route path="/dashboard" element={<ProtectedRoute role="employee"><EmployeeLayout /></ProtectedRoute>}>
-          <Route index element={<EmployeeDashboard />} />
-          <Route path="result/:resultId" element={<ResultPage />} />
+        <Route path="/employee" element={<ProtectedRoute role="employee"><EmployeeLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="/employee/dashboard" replace />} />
+          <Route path="dashboard" element={<EmployeeDashboard />} />
+          <Route path="result/:examId" element={<ResultPage />} />
         </Route>
+
+        {/* Fallbacks & Compatibility */}
+        <Route path="/dashboard" element={<Navigate to="/employee/dashboard" replace />} />
+        <Route path="/dashboard/result/:examId" element={<NavigateToResult />} />
 
         {/* Exam - fullscreen mode, no layout */}
         <Route path="/exam/:assessmentId" element={<ProtectedRoute role="employee"><ExamPage /></ProtectedRoute>} />

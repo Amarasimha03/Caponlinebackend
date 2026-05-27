@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Clock, CheckCircle, Play, Eye, Award, TrendingUp, Bell, X, BookOpen, Calendar } from 'lucide-react';
+import { FileText, Clock, CheckCircle, Play, Award, TrendingUp, Bell, X, BookOpen, Calendar, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
@@ -209,7 +209,7 @@ export default function EmployeeDashboard() {
                     <td>
                       {a.status === 'completed' ? (
                         a.result && (
-                          <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/dashboard/result/${a.result._id}`)}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/employee/result/${a._id}`)}>
                             <Eye size={14} /> Result
                           </button>
                         )
@@ -254,7 +254,7 @@ export default function EmployeeDashboard() {
                   </div>
                 </div>
                 {a.result && (
-                  <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => navigate(`/dashboard/result/${a.result._id}`)}>
+                  <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => navigate(`/employee/result/${a._id}`)}>
                     <Eye size={14} /> View Detailed Result
                   </button>
                 )}

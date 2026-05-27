@@ -73,10 +73,15 @@ function handleRequest(e) {
       case 'saveMonitoring':    return saveMonitoring(body);
       case 'getMonitoring':     return getMonitoring(body);
 
-      // ── Attempt Control ──
+       // ── Attempt Control ──
       case 'checkAttempt':      return checkAttempt(body);
       case 'getAttempts':       return getAttempts();
       case 'resetAttempt':      return resetAttempt(body);
+      case 'resetResults':
+        var resultsSheet = getSheet('results');
+        resultsSheet.clearContents();
+        ensureHeaders(resultsSheet, RES_HEADERS);
+        return jsonResponse({ success: true, message: 'Results sheet cleared' });
 
       default:
         return jsonResponse({ success: false, message: 'Unknown action: ' + action });
@@ -126,12 +131,8 @@ function sheetToObjects(sheet) {
 }
 
 function ensureHeaders(sheet, headers) {
-  var firstRow = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  var hasHeaders = firstRow[0] && firstRow[0].toString().trim() !== '';
-  if (!hasHeaders) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-  }
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
 }
 
 function findRowById(sheet, idColIndex, idValue) {

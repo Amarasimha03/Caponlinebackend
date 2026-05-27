@@ -29,7 +29,7 @@ export default function EmployeeLayout() {
         </div>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <NavLink to="/dashboard" end className="btn btn-ghost btn-sm"
+          <NavLink to="/employee/dashboard" end className="btn btn-ghost btn-sm"
             style={({ isActive }) => ({ color: isActive ? 'var(--primary-light)' : 'var(--text-muted)' })}>
             <LayoutDashboard size={16} /> Dashboard
           </NavLink>

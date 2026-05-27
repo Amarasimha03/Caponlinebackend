@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Camera, Shield, ChevronRight, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, Camera, Shield, ChevronRight, Loader2, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import socket from '../../services/socket';
 import * as tf from '@tensorflow/tfjs';
@@ -12,7 +12,7 @@ import useAuthStore from '../../store/authStore';
 export default function ExamPage() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   const [phase, setPhase]           = useState('setup'); // setup, webcam, exam, submitted
   const [assessment, setAssessment] = useState(null);
@@ -25,8 +25,12 @@ export default function ExamPage() {
   const [maxViolations, setMaxViolations] = useState(3);
   const [webcamReady, setWebcamReady]     = useState(false);
   const [submitting, setSubmitting]       = useState(false);
-  const [result, setResult]               = useState(null);
+
   const [cameraWarnings, setCameraWarnings] = useState(0);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cameraError, setCameraError]     = useState('');
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const cameraRequestingRef = useRef(false);
 
   // localStorage key for this specific exam session
   const LS_EXAM_KEY = `examState_${assessmentId}`;
@@ -169,6 +173,14 @@ export default function ExamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, webcamReady]);
 
+  // Auto-start webcam when entering the webcam verification phase (video element is now mounted)
+  useEffect(() => {
+    if (phase === 'webcam') {
+      startWebcam();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
   // Sync Metadata to both localStorage and Sheets when it changes
   useEffect(() => {
     if (phase !== 'setup' && phase !== 'submitted') {
@@ -219,63 +231,107 @@ export default function ExamPage() {
     }
   }, [assessmentId, user?._id]);
 
-  // Setup webcam & screen sharing
+  // Setup webcam (camera only — screen sharing is requested at exam start)
   const startWebcam = async () => {
+    // Prevent duplicate requests
+    if (cameraRequestingRef.current) return;
+    cameraRequestingRef.current = true;
+    setCameraLoading(true);
+    setCameraError('');
+
+    // Check HTTPS requirement
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      setCameraError('Camera access requires a secure HTTPS connection.');
+      setCameraLoading(false);
+      cameraRequestingRef.current = false;
+      return;
+    }
+
+    // Check if browser supports getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Your browser does not support camera access. Please use Chrome, Edge, or Firefox.');
+      setCameraLoading(false);
+      cameraRequestingRef.current = false;
+      return;
+    }
+
     try {
+      // Cleanup any existing streams first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            facingMode: "user"
-          },
-          audio: true
-        });
-      } catch (audioErr) {
-        console.warn("Camera with audio failed, falling back to video only...", audioErr);
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            facingMode: "user"
-          },
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
           audio: false
         });
+        console.log('Camera stream started (video only):', stream);
+      } catch (videoOnlyErr) {
+        console.warn('High-res camera failed, trying lower resolution...', videoOnlyErr);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+        console.log('Camera stream started (fallback):', stream);
       }
+
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        try {
-          await videoRef.current.play();
-        } catch (e) {
-          console.warn("Video play failed:", e);
+
+      // Bind to video element — may need a small delay for React mount
+      const bindStream = () => {
+        if (videoRef.current) {
+          if (videoRef.current.srcObject !== stream) {
+            videoRef.current.srcObject = stream;
+          }
+          videoRef.current.play().then(() => {
+            console.log('Video playback started successfully');
+          }).catch(e => {
+            if (e.name !== 'AbortError') {
+              console.warn('Video play() failed:', e);
+            }
+          });
         }
-      }
+      };
+      bindStream();
+      // Retry binding after a short delay in case video element wasn't mounted yet
+      setTimeout(bindStream, 300);
 
       if (!stream.active) {
-        toast.error("Camera is not active or is blocked by another application.");
+        setCameraError('Camera is not active. It may be blocked by another application (Zoom, Meet, Teams). Close them and retry.');
+        setCameraLoading(false);
+        cameraRequestingRef.current = false;
+        return;
       }
 
-      // Enforce Screen Sharing Permission
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-        screenStreamRef.current = screenStream;
-        screenStream.getVideoTracks()[0].onended = () => {
-          logViolation('screen-sharing-stopped', 'Screen sharing was revoked by the candidate');
-          api.post('/state/monitor/save', { userId: user?._id, screenShareStatus: 'stopped' }).catch(()=>{});
-        };
-        setWebcamReady(true);
-        api.post('/state/monitor/save', { userId: user?._id, cameraStatus: 'active', screenShareStatus: 'active' }).catch(()=>{});
-      } catch (err) {
-        toast.error('Screen sharing permission is mandatory for this assessment.', { duration: 5000 });
-        setWebcamReady(false);
-        api.post('/state/monitor/save', { userId: user?._id, screenShareStatus: 'denied' }).catch(()=>{});
-      }
+      setWebcamReady(true);
+      setCameraError('');
+      api.post('/state/monitor/save', { userId: user?._id, cameraStatus: 'active' }).catch(() => {});
+      console.log('Webcam ready — camera active');
     } catch (err) {
-      toast.error('Camera/Microphone access is mandatory. Please make sure the camera is not blocked by another application.', { duration: 5000 });
+      console.error('Webcam Error:', err);
+      let errorMsg = 'Camera access failed. ';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMsg = 'Camera access denied. Please allow webcam permission in your browser settings and retry.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errorMsg = 'No webcam device found. Please connect a camera and retry.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMsg = 'Camera is already in use by another application (Zoom, Google Meet, Teams). Close it and retry.';
+      } else if (err.name === 'OverconstrainedError') {
+        errorMsg = 'Camera does not support the required resolution. Retrying with default settings...';
+      } else if (err.name === 'AbortError') {
+        errorMsg = 'Camera request was interrupted. Please retry.';
+      } else {
+        errorMsg += err.message || 'Unknown error occurred.';
+      }
+      setCameraError(errorMsg);
       setWebcamReady(false);
-      api.post('/state/monitor/save', { userId: user?._id, cameraStatus: 'denied' }).catch(()=>{});
+      api.post('/state/monitor/save', { userId: user?._id, cameraStatus: 'denied' }).catch(() => {});
+    } finally {
+      setCameraLoading(false);
+      cameraRequestingRef.current = false;
     }
   };
 
@@ -325,9 +381,23 @@ export default function ExamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cleanupMediaStreams]);
 
-  // Start exam
+  // Start exam (also requests screen sharing here so webcam verification isn't blocked)
   const startExam = async () => {
     try {
+      // Request screen sharing before starting the exam
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        screenStreamRef.current = screenStream;
+        screenStream.getVideoTracks()[0].onended = () => {
+          logViolation('screen-sharing-stopped', 'Screen sharing was revoked by the candidate');
+          api.post('/state/monitor/save', { userId: user?._id, screenShareStatus: 'stopped' }).catch(() => {});
+        };
+        api.post('/state/monitor/save', { userId: user?._id, screenShareStatus: 'active' }).catch(() => {});
+      } catch (err) {
+        toast.error('Screen sharing permission is mandatory for this assessment.', { duration: 5000 });
+        return; // Don't start exam without screen share
+      }
+
       const { data } = await api.post('/assessments/start', { assessmentId });
       setResultId(data.result._id);
       setPhase('exam');
@@ -401,7 +471,14 @@ export default function ExamPage() {
     const handleAnswer = async (data) => {
       if (peerConnectionRef.current && peerConnectionRef.current.signalingState !== 'stable') {
         try {
-          await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+          const pc = peerConnectionRef.current;
+          await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+          if (pc.candidateQueue) {
+            for (const candidate of pc.candidateQueue) {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Queued AddIceCandidate Error:", e));
+            }
+            pc.candidateQueue = [];
+          }
         } catch (err) {
           console.error("SetRemoteDescription Error:", err);
         }
@@ -411,7 +488,13 @@ export default function ExamPage() {
     const handleIceCandidate = async (data) => {
       if (peerConnectionRef.current && data.candidate) {
         try {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+          const pc = peerConnectionRef.current;
+          if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          } else {
+            if (!pc.candidateQueue) pc.candidateQueue = [];
+            pc.candidateQueue.push(data.candidate);
+          }
         } catch (err) {
           console.error("AddIceCandidate Error:", err);
         }
@@ -468,11 +551,12 @@ export default function ExamPage() {
       if (data.success) {
         toast.success("Result saved successfully");
       }
-      setResult(data.result);
-      setPhase('submitted');
       socketRef.current?.emit('exam:submit', { employeeId: user?._id, assessmentId, terminationReason });
       
       cleanupMediaStreams();
+      
+      // Clear exam cache immediately upon submission to prevent reloading old state on next attempt
+      localStorage.removeItem(LS_EXAM_KEY);
 
       // Safely exit fullscreen only if active, catching any document inactive errors
       if (document.fullscreenElement) {
@@ -480,6 +564,8 @@ export default function ExamPage() {
           console.warn("Fullscreen exit failed:", err);
         });
       }
+
+      navigate(`/employee/result/${assessmentId}`, { replace: true });
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Google Sheet synchronization failed. Please try again.';
       toast.error(errMsg);
@@ -628,21 +714,58 @@ export default function ExamPage() {
 
   const submitExamAutomatically = async (reason = "Camera Violations") => {
     try {
+      // 1. Stop exam timer and monitoring intervals
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (simulationIntervalRef.current) clearInterval(simulationIntervalRef.current);
+
+      // 2. Exit fullscreen if active
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => console.warn('Fullscreen exit failed:', err));
+      }
+
+      // Prepare answer array from current state
+      const answerArray = questions.map(q => ({
+        questionId: q._id,
+        selectedOptions: answers[q._id]?.selectedOptions || [],
+        timeTaken: 0,
+      }));
+
+      // 3. Send cancellation to backend with current answers
       await api.post("/submit-exam", {
         employeeId: user?._id,
         reason: reason,
         resultId: resultId,
+        answers: answerArray,
       });
 
+      // 4. Stop camera, screen share, and WebRTC
       cleanupMediaStreams();
 
+      // 5. Clear all exam-related localStorage/sessionStorage data
       localStorage.removeItem(LS_EXAM_KEY);
-      await logout();
-      navigate("/exam-terminated");
+      localStorage.removeItem('activeTest');
+      localStorage.removeItem('examProgress');
+      sessionStorage.removeItem('examActive');
+
+      // 6. Disconnect socket for this exam session
+      socketRef.current?.emit('exam:cancelled', { employeeId: user?._id, assessmentId });
+
+      // 7. Redirect to login and replace history to prevent back-button
+      navigate("/login", { replace: true });
     } catch (err) {
       console.error("Auto submit failed:", err);
-      await logout();
-      navigate("/exam-terminated");
+      // Cleanup even on failure
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (simulationIntervalRef.current) clearInterval(simulationIntervalRef.current);
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      cleanupMediaStreams();
+      localStorage.removeItem(LS_EXAM_KEY);
+      localStorage.removeItem('activeTest');
+      localStorage.removeItem('examProgress');
+      sessionStorage.removeItem('examActive');
+      navigate("/login", { replace: true });
     }
   };
 
@@ -811,7 +934,7 @@ export default function ExamPage() {
               Max {maxViolations} violations before auto-submit.
             </div>
           </div>
-          <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setPhase('webcam'); startWebcam(); }}>
+          <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setPhase('webcam'); }}>
             Continue to Webcam Setup <ChevronRight size={18} />
           </button>
         </motion.div>
@@ -827,99 +950,56 @@ export default function ExamPage() {
           <Camera size={36} color="var(--primary-light)" style={{ marginBottom: 16 }} />
           <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Webcam Verification</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>Ensure your face is clearly visible</p>
-          <div style={{ width: '100%', height: 260, borderRadius: 12, overflow: 'hidden', background: '#000', marginBottom: 20, border: '2px solid var(--border)' }}>
+
+          {/* Video preview with loading/error overlays */}
+          <div style={{ position: 'relative', width: '100%', height: 260, borderRadius: 12, overflow: 'hidden', background: '#000', marginBottom: 20, border: `2px solid ${cameraError ? '#ef4444' : webcamReady ? '#10b981' : 'var(--border)'}` }}>
             <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+
+            {/* Loading spinner overlay */}
+            {cameraLoading && !webcamReady && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }}>
+                <Loader2 size={36} color="#818cf8" className="animate-spin" />
+                <span style={{ color: '#a5b4fc', fontSize: 13, marginTop: 12, fontWeight: 500 }}>Initializing camera...</span>
+              </div>
+            )}
+
+            {/* Error overlay */}
+            {cameraError && !cameraLoading && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)', padding: 20 }}>
+                <XCircle size={36} color="#ef4444" />
+                <span style={{ color: '#fca5a5', fontSize: 13, marginTop: 12, fontWeight: 500, lineHeight: 1.5, textAlign: 'center' }}>{cameraError}</span>
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: webcamReady ? '#10b981' : '#ef4444' }} />
-            <span style={{ fontSize: 13, color: webcamReady ? '#10b981' : '#ef4444', fontWeight: webcamReady ? 400 : 600 }}>
-              {webcamReady ? 'Webcam Active' : 'Camera access is mandatory for this assessment.'}
-            </span>
-          </div>
-          <button className="btn btn-primary btn-lg" disabled={!webcamReady} style={{ width: '100%', justifyContent: 'center' }} onClick={startExam}>
-            Start Exam <ChevronRight size={18} />
+
+          {/* Status indicator */}
+          {webcamReady && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 16 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
+              <span style={{ fontSize: 13, color: '#10b981', fontWeight: 500 }}>Webcam Active — Ready to start</span>
+            </div>
+          )}
+
+          {/* Retry button when camera fails */}
+          {cameraError && !cameraLoading && (
+            <button
+              className="btn btn-lg"
+              onClick={() => { setWebcamReady(false); startWebcam(); }}
+              style={{ width: '100%', justifyContent: 'center', marginBottom: 12, background: 'transparent', border: '2px solid var(--primary)', color: 'var(--primary)', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              <Camera size={16} style={{ marginRight: 8 }} /> Retry Camera
+            </button>
+          )}
+
+          <button className="btn btn-primary btn-lg" disabled={!webcamReady || cameraLoading} style={{ width: '100%', justifyContent: 'center' }} onClick={startExam}>
+            {cameraLoading ? <><Loader2 size={18} className="animate-spin" style={{ marginRight: 8 }} /> Checking Camera...</> : <>Start Exam <ChevronRight size={18} /></>}
           </button>
         </motion.div>
       </div>
     );
   }
 
-  // SUBMITTED PHASE
-  if (phase === 'submitted' && result) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ maxWidth: 460, width: '100%', textAlign: 'center', padding: 48 }}>
-          {result.passed ? <CheckCircle size={64} color="#10b981" style={{ margin: '0 auto' }} /> : <XCircle size={64} color="#ef4444" style={{ margin: '0 auto' }} />}
-          <h2 style={{ fontSize: 26, fontWeight: 800, marginTop: 16, marginBottom: 6 }}>
-            {result.passed ? 'Congratulations!' : 'Exam Completed'}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 28 }}>
-            {result.passed ? 'You passed the assessment!' : 'Better luck next time.'}
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginBottom: 32 }}>
-            <div><div style={{ fontSize: 36, fontWeight: 900, color: result.passed ? '#10b981' : '#ef4444' }}>{result.percentage}%</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Score</div></div>
-            <div><div style={{ fontSize: 36, fontWeight: 900, color: 'var(--text-primary)' }}>{result.totalScore}/{result.totalMarks}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Marks</div></div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 28 }}>
-            <div><span className={`badge ${result.passed ? 'badge-success' : 'badge-danger'}`}>{result.passed ? 'PASSED' : 'FAILED'}</span></div>
-            <div><span className="badge badge-warning">{result.violationCount} violations</span></div>
-            <div><span className="badge badge-info">{result.completionTime}m</span></div>
-          </div>
-          <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', marginBottom: 32 }} onClick={() => navigate('/dashboard')}>
-            Back to Dashboard
-          </button>
-        </motion.div>
 
-        {/* Question Analysis UI */}
-        <div className="card" style={{ maxWidth: 800, width: '100%', padding: 40, marginTop: 40 }}>
-          <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 24, color: 'var(--text-primary)' }}>Question Analysis</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {result.answers?.map((ans, idx) => {
-              const q = questions.find(qst => qst._id === ans.question);
-              if (!q) return null;
-
-              const isCorrect = ans.isCorrect;
-              const isUnanswered = !ans.selectedOptions || ans.selectedOptions.length === 0;
-              const color = isCorrect ? '#10b981' : isUnanswered ? '#9ca3af' : '#ef4444';
-              const bgColor = isCorrect ? 'rgba(16, 185, 129, 0.1)' : isUnanswered ? 'rgba(156, 163, 175, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-
-              return (
-                <div key={idx} style={{
-                  padding: 20, borderRadius: 12, border: `1px solid ${color}`, background: bgColor,
-                  display: 'flex', flexDirection: 'column', gap: 12
-                }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 16, fontWeight: 800, color }}>Q{idx + 1}.</span>
-                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{q.title}</span>
-                  </div>
-
-                  <div style={{ paddingLeft: 30, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 14, display: 'flex', gap: 8 }}>
-                      <span style={{ color: 'var(--text-muted)', width: 120 }}>Your Answer:</span>
-                      <span style={{ color: isUnanswered ? '#9ca3af' : 'var(--text-primary)', fontWeight: 600 }}>
-                        {isUnanswered ? 'Unanswered' : ans.selectedOptions.map(optIdx => q.options[optIdx]?.text).join(', ')}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 14, display: 'flex', gap: 8 }}>
-                      <span style={{ color: 'var(--text-muted)', width: 120 }}>Correct Answer:</span>
-                      <span style={{ color: '#10b981', fontWeight: 600 }}>
-                        {q.options.filter(o => o.isCorrect).map(o => o.text).join(', ')}
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', marginTop: 8 }}>
-                    <span className="badge" style={{ background: color, color: '#fff' }}>
-                      {isCorrect ? 'Correct' : isUnanswered ? 'Unanswered' : 'Wrong'}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // EXAM PHASE
   const question = questions[currentQ];
@@ -1042,13 +1122,92 @@ export default function ExamPage() {
                 })}
               </div>
 
-              {/* Next button */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 40 }}>
+              {/* Action buttons */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 40 }}>
+                <button
+                  className="btn btn-lg"
+                  onClick={() => setShowCancelConfirm(true)}
+                  disabled={submitting}
+                  style={{
+                    background: 'transparent',
+                    border: '2px solid #ef4444',
+                    color: '#ef4444',
+                    borderRadius: 12,
+                    padding: '10px 24px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { e.target.style.background = '#ef4444'; e.target.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = '#ef4444'; }}
+                >
+                  <XCircle size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                  Cancel Exam
+                </button>
                 <button className="btn btn-primary btn-lg" onClick={handleNext} disabled={submitting || !hasAnswer}>
                   {submitting ? <Loader2 size={18} className="animate-spin" /> :
                     currentQ < questions.length - 1 ? <>Next Question <ChevronRight size={18} /></> : <>Submit Assessment</>}
                 </button>
               </div>
+
+              {/* Cancel Exam Confirmation Modal */}
+              {showCancelConfirm && (
+                <div style={{
+                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 99999,
+                }}>
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    style={{
+                      background: 'var(--card-bg, #fff)', borderRadius: 20, padding: 36,
+                      maxWidth: 440, width: '90%', textAlign: 'center',
+                      boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    <div style={{
+                      width: 56, height: 56, borderRadius: '50%',
+                      background: 'rgba(239,68,68,0.12)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      margin: '0 auto 20px',
+                    }}>
+                      <AlertTriangle size={28} color="#ef4444" />
+                    </div>
+                    <h3 style={{ margin: '0 0 10px', fontSize: 20, fontWeight: 700, color: 'var(--text, #1a1a2e)' }}>
+                      Are you sure you want to cancel the exam?
+                    </h3>
+                    <p style={{ margin: '0 0 28px', color: 'var(--text-muted, #64748b)', fontSize: 14, lineHeight: 1.6 }}>
+                      Your progress will be saved but the exam will be marked as <strong>Cancelled</strong>.
+                      You will be redirected to the login page.
+                    </p>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                      <button
+                        onClick={() => setShowCancelConfirm(false)}
+                        style={{
+                          padding: '12px 28px', borderRadius: 12, border: '2px solid var(--border, #e2e8f0)',
+                          background: 'transparent', color: 'var(--text, #1a1a2e)',
+                          fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s',
+                        }}
+                      >
+                        No, Continue Exam
+                      </button>
+                      <button
+                        onClick={() => { setShowCancelConfirm(false); submitExamAutomatically('User Cancelled Exam'); }}
+                        style={{
+                          padding: '12px 28px', borderRadius: 12, border: 'none',
+                          background: '#ef4444', color: '#fff',
+                          fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s',
+                        }}
+                      >
+                        Yes, Exit Exam
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+              
             </motion.div>
           </AnimatePresence>
         </div>
