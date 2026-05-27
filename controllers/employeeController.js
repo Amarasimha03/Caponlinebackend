@@ -7,6 +7,9 @@ const { persistEntity } = require('../utils/localCache');
 // GET all employees (admin)
 exports.getEmployees = async (req, res) => {
   try {
+    const mongoose = require('../utils/localCache');
+    await mongoose.connect(); // Force fresh sync from Google Sheets
+
     // Find all users with role 'employee' (case-insensitive guard)
     const all = await Employee.find({});
     const employees = all
