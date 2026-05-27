@@ -72,8 +72,8 @@ function QuestionCard({ qa, index }) {
       : { background: "#f5f5f4", color: "#888780", border: "1px solid rgba(161,161,170,0.3)" };
 
   const badgeText =
-    status === "correct" ? "✓ Correct" :
-    status === "wrong"   ? "✗ Wrong"   : "— Not Attempted";
+    status === "correct" ? "Correct" :
+    status === "wrong"   ? "Wrong"   : "Not Attempted";
 
   return (
     <div style={{
