@@ -42,7 +42,19 @@ const ProtectedRoute = ({ children, role }) => {
 
 function App() {
   const { fetchMe, token } = useAuthStore();
-  useEffect(() => { if (token) fetchMe(); }, [token, fetchMe]);
+
+  useEffect(() => {
+    if (token) {
+      fetchMe();
+      if (!socket.connected) {
+        socket.connect();
+      }
+    } else {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    }
+  }, [token, fetchMe]);
 
   return (
     <>
