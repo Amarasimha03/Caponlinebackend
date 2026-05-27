@@ -37,6 +37,7 @@ const auditLogRoutes = require('./routes/auditLogs');
 const stateSyncRoutes = require('./routes/stateSync');
 const liveMonitoringRoutes = require('./routes/liveMonitoringRoutes');
 const examRoutes = require('./routes/examRoutes');
+const sheetsWebhookRoutes = require('./routes/sheetsWebhook');
 
 const app = express();
 
@@ -106,6 +107,8 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/state', stateSyncRoutes);
 app.use('/api/live-monitoring', liveMonitoringRoutes);
 app.use('/api/exam', examRoutes);
+// No auth middleware — called directly by Google Apps Script
+app.use('/api/sheets', sheetsWebhookRoutes);
 
 const { protect, adminOnly } = require('./middleware/auth');
 
