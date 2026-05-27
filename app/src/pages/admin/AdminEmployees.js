@@ -132,6 +132,8 @@ export default function AdminEmployees() {
   };
 
   const load = async (isBackground = false) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     if (!isBackground) setLoading(true);
     try {
       const { data } = await api.get('/employees');
