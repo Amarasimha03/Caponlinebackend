@@ -93,11 +93,7 @@ const useAuthStore = create((set, get) => ({
         }
       }
     } catch (err) {
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        localStorage.removeItem(LS_TOKEN_KEY);
-        localStorage.removeItem(LS_USER_KEY);
-        set({ user: null, token: null });
-      }
+      // Do NOT clear user/token on error to ensure users stay logged in strictly until they manually click the Logout button.
       set({ isLoading: false });
     }
   },
