@@ -18,7 +18,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const url    = error.response?.config?.url || "";
+    const url    = error.config?.url || error.response?.config?.url || "";
 
     // Only force logout if the LOGIN call itself returns 401
     // Never auto-logout on other API calls
