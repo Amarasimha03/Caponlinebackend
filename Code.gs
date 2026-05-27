@@ -83,6 +83,7 @@ function handleRequest(e) {
         ensureHeaders(resultsSheet, RES_HEADERS);
         return jsonResponse({ success: true, message: 'Results sheet cleared' });
 
+      case 'deleteEntity':      return deleteEntity(body);
       default:
         return jsonResponse({ success: false, message: 'Unknown action: ' + action });
     }
