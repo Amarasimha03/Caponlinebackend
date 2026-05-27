@@ -29,6 +29,8 @@ export default function EmployeeDashboard() {
 
   // Fetch latest assessments from server — always the source of truth
   const load = useCallback(async (isBackground = false) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     if (!isBackground) setLoading(true);
     try {
       const { data } = await api.get('/assessments/my');
