@@ -28,7 +28,8 @@ export default function EmployeeDashboard() {
   const [showNotif, setShowNotif]       = useState(false);
 
   // Fetch latest assessments from server — always the source of truth
-  const load = useCallback(async () => {
+  const load = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const { data } = await api.get('/assessments/my');
       const list = data.assessments || [];
@@ -36,9 +37,9 @@ export default function EmployeeDashboard() {
       // Save to localStorage as backup for next refresh
       localStorage.setItem(LS_ASSESSMENTS_KEY, JSON.stringify(list));
     } catch {
-      toast.error('Failed to load assessments');
+      if (!isBackground) toast.error('Failed to load assessments');
     }
-    setLoading(false);
+    if (!isBackground) setLoading(false);
   }, []);
 
   // Dashboard loaded normally, users will start the exam manually by clicking the "Start" button
