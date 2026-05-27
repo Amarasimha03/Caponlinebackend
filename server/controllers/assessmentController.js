@@ -221,6 +221,20 @@ exports.deleteAssessment = async (req, res) => {
 exports.startExam = async (req, res) => {
   try {
     const { assessmentId } = req.body;
+    
+    // Check if the employee has already completed/submitted this exam
+    const completedExisting = await Result.findOne({ 
+      employee: req.user._id, 
+      assessment: assessmentId, 
+      status: { $in: ['submitted', 'auto-submitted', 'disqualified'] } 
+    });
+    if (completedExisting) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'You have already completed this exam. Retakes are not allowed.' 
+      });
+    }
+
     const existing = await Result.findOne({ employee: req.user._id, assessment: assessmentId, status: 'in-progress' });
     if (existing) return res.json({ success: true, result: existing });
 
