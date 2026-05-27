@@ -838,10 +838,21 @@ const mongooseMock = {
 
       if (json && json.success && json.data) {
         IN_MEMORY_DB = hydrateSheetsData(json.data);
+
+        // Dedup employees by email — prevents ghost 5th employee when admin
+        // appears in both the seed state AND in the Google Sheet
+        const seen = new Map();
+        IN_MEMORY_DB.employees.forEach(e => {
+          const key = (e.email || '').toLowerCase().trim();
+          if (key) seen.set(key, e);
+        });
+        IN_MEMORY_DB.employees = Array.from(seen.values());
+
         const counts = Object.entries(IN_MEMORY_DB)
           .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.length : 0}`)
           .join(', ');
         console.log(`✅ Google Sheets DB loaded — ${counts}`);
+
       } else {
         console.warn('⚠️  Google Sheets returned no data. Using initial state.');
         console.warn('    Response:', JSON.stringify(json).substring(0, 300));
