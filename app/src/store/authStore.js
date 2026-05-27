@@ -14,9 +14,12 @@ const useAuthStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      localStorage.setItem(LS_TOKEN_KEY, data.token);
-      localStorage.setItem(LS_USER_KEY, JSON.stringify(data.user));
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('portal_user', JSON.stringify(data.user));
       set({ user: data.user, token: data.token, isLoading: false });
+
+      console.log("Token saved:", localStorage.getItem("token") ? "YES" : "NO — PROBLEM HERE");
 
       // Save session to Google Sheets (non-blocking)
       if (data.user?._id) {
@@ -42,8 +45,9 @@ const useAuthStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.post('/auth/register', userData);
-      localStorage.setItem(LS_TOKEN_KEY, data.token);
-      localStorage.setItem(LS_USER_KEY, JSON.stringify(data.user));
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('portal_user', JSON.stringify(data.user));
       set({ user: data.user, token: data.token, isLoading: false });
       return data;
     } catch (err) {
@@ -65,21 +69,23 @@ const useAuthStore = create((set, get) => ({
       }
       await api.post('/auth/logout');
     } catch {}
-    localStorage.removeItem(LS_TOKEN_KEY);
-    localStorage.removeItem(LS_USER_KEY);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('portal_user');
     localStorage.removeItem('activeTest');
     localStorage.removeItem('examProgress');
     set({ user: null, token: null });
   },
 
   fetchMe: async () => {
-    const token = localStorage.getItem(LS_TOKEN_KEY);
+    const token = localStorage.getItem('token');
     if (!token) return;
     set({ isLoading: true });
     try {
       const { data } = await api.get('/auth/me');
       // Persist user to localStorage so it survives refreshes
-      localStorage.setItem(LS_USER_KEY, JSON.stringify(data.user));
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('portal_user', JSON.stringify(data.user));
       set({ user: data.user, isLoading: false });
 
       // Verify session with Google Sheets Backend (non-blocking, do NOT force logout unless explicitly requested via Logout button)
