@@ -813,3 +813,21 @@ function resetAttempt(body) {
     lock.releaseLock();
   }
 }
+
+function deleteEntity(body) {
+  if (!body.sheetName) return jsonResponse({ success: false, message: 'sheetName required' });
+  if (!body._id) return jsonResponse({ success: false, message: '_id required' });
+  
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getSheet(body.sheetName);
+    var rowNum = findRowById(sheet, 0, body._id);
+    if (rowNum === -1) return jsonResponse({ success: false, message: 'Entity not found in sheet: ' + body.sheetName });
+    
+    sheet.deleteRow(rowNum);
+    return jsonResponse({ success: true, message: 'Deleted entity ' + body._id + ' from ' + body.sheetName });
+  } finally {
+    lock.releaseLock();
+  }
+}
