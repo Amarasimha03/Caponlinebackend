@@ -13,6 +13,8 @@ export default function AdminDashboard() {
   const [syncMsg, setSyncMsg] = useState('');
 
   const load = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     setLoading(true);
     try {
       const [statsRes, analyticsRes, violRes] = await Promise.all([
@@ -90,8 +92,8 @@ export default function AdminDashboard() {
       <div className="stats-grid" style={{ marginBottom: 28 }}>
         {statCards.map((s, i) => (
           <motion.div
-            key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }} className="stat-card"
+            key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.2 }} className="stat-card"
           >
             <div className="stat-icon" style={{ background: s.bg }}>
               <s.icon size={24} color={s.color} />
@@ -106,7 +108,7 @@ export default function AdminDashboard() {
 
       {/* Charts */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.2 }} className="card">
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20, color: 'var(--text-primary)' }}>
             <BarChart3 size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
             Department Performance
@@ -134,7 +136,7 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.2 }} className="card">
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20, color: 'var(--text-primary)' }}>
             <Award size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
             Pass/Fail Ratio
@@ -158,7 +160,7 @@ export default function AdminDashboard() {
 
       {/* Violations & Quick Info */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.2 }} className="card">
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={18} color="var(--warning)" /> Violation Breakdown
           </h3>
@@ -170,7 +172,7 @@ export default function AdminDashboard() {
           )) : <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No violations recorded</p>}
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.2 }} className="card">
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Clock size={18} color="var(--info)" /> Quick Stats
           </h3>
