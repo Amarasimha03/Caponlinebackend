@@ -16,7 +16,21 @@ exports.createQuestion = async (req, res) => {
   try {
     const question = await Question.create({ ...req.body, createdBy: req.user._id });
     if (req.body.assessmentId) {
-      await Assessment.findByIdAndUpdate(req.body.assessmentId, { $push: { questions: question._id } });
+      const assessment = await Assessment.findByIdAndUpdate(req.body.assessmentId, { $push: { questions: question._id } }, { new: true });
+      if (assessment) {
+        persistEntity('updateAssessment', {
+          _id:          assessment._id.toString(),
+          title:        assessment.title,
+          description:  assessment.description || '',
+          duration:     assessment.duration,
+          passingScore: assessment.passingScore,
+          category:     assessment.category || 'General',
+          status:       assessment.status,
+          maxViolations:assessment.maxViolations,
+          questions:    assessment.questions || [],
+          assignedTo:   assessment.assignedTo || [],
+        });
+      }
     }
 
     // Persist question to Google Sheets
@@ -110,7 +124,21 @@ exports.bulkCreateQuestions = async (req, res) => {
     const created = await Question.insertMany(sanitizedQuestions);
     if (assessmentId) {
       const ids = created.map(q => q._id);
-      await Assessment.findByIdAndUpdate(assessmentId, { $push: { questions: { $each: ids } } });
+      const assessment = await Assessment.findByIdAndUpdate(assessmentId, { $push: { questions: { $each: ids } } }, { new: true });
+      if (assessment) {
+        persistEntity('updateAssessment', {
+          _id:          assessment._id.toString(),
+          title:        assessment.title,
+          description:  assessment.description || '',
+          duration:     assessment.duration,
+          passingScore: assessment.passingScore,
+          category:     assessment.category || 'General',
+          status:       assessment.status,
+          maxViolations:assessment.maxViolations,
+          questions:    assessment.questions || [],
+          assignedTo:   assessment.assignedTo || [],
+        });
+      }
     }
 
     // Persist each question to Google Sheets
@@ -145,7 +173,21 @@ exports.deleteQuestion = async (req, res) => {
   try {
     const question = await Question.findByIdAndDelete(req.params.id);
     if (question?.assessment) {
-      await Assessment.findByIdAndUpdate(question.assessment, { $pull: { questions: question._id } });
+      const assessment = await Assessment.findByIdAndUpdate(question.assessment, { $pull: { questions: question._id } }, { new: true });
+      if (assessment) {
+        persistEntity('updateAssessment', {
+          _id:          assessment._id.toString(),
+          title:        assessment.title,
+          description:  assessment.description || '',
+          duration:     assessment.duration,
+          passingScore: assessment.passingScore,
+          category:     assessment.category || 'General',
+          status:       assessment.status,
+          maxViolations:assessment.maxViolations,
+          questions:    assessment.questions || [],
+          assignedTo:   assessment.assignedTo || [],
+        });
+      }
     }
     res.json({ success: true, message: 'Question deleted' });
   } catch (err) { console.error('QUESTION ERROR:', err); res.status(500).json({ success: false, message: err.message }); }
