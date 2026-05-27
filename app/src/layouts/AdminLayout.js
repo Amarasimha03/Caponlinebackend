@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useMonitoringStore from '../store/monitoringStore';
+import socket from '../services/socket';
 import { useEffect } from 'react';
 
 const NAV_ITEMS = [
