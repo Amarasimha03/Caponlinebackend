@@ -27,9 +27,21 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('[AdminLayout] No token — skipping socket connect');
+      return;
+    }
+
+    // Connect socket only when token is confirmed present
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     init();
     fetchMonitoringData();
-    const interval = setInterval(fetchMonitoringData, 5000);
+    // Poll every 30s — enough to stay fresh without hammering the server
+    const interval = setInterval(fetchMonitoringData, 30000);
     return () => clearInterval(interval);
   }, [init, fetchMonitoringData]);
 
