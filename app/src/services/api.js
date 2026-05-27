@@ -15,14 +15,22 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('portal_user');
-      window.location.href = '/login';
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url    = error.response?.config?.url || "";
+
+    // Only force logout if the LOGIN call itself returns 401
+    // Never auto-logout on other API calls
+    const isLoginEndpoint = url.includes("/auth/login") || url.includes("/login");
+
+    if (status === 401 && isLoginEndpoint) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("portal_user");
+      window.location.href = "/login";
     }
-    return Promise.reject(err);
+
+    return Promise.reject(error);
   }
 );
 
