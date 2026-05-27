@@ -6,6 +6,10 @@ import api from '../services/api';
 // Stored outside the React/Zustand state tree to avoid proxying or triggering infinite renders
 const peerConnections = {};
 
+// Backoff counter — stops poll spam after repeated 401 / network failures
+let consecutiveFailures = 0;
+const MAX_FAILURES = 3;
+
 const useMonitoringStore = create((set, get) => ({
   activeExams: [],
   violations: [],
@@ -14,37 +18,44 @@ const useMonitoringStore = create((set, get) => ({
 
   // Fetch active exams from backend and merge with current streaming state
   fetchMonitoringData: async () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem('token');
     if (!token) {
-      console.warn("[MonitoringStore] No token found — skipping fetch");
+      console.warn('[MonitoringStore] No token — skipping fetch');
+      return;
+    }
+
+    // Pause polling after too many consecutive failures — re-login to resume
+    if (consecutiveFailures >= MAX_FAILURES) {
+      console.warn(`[MonitoringStore] ${MAX_FAILURES} consecutive failures — polling paused. Re-login to resume.`);
       return;
     }
 
     try {
-      const res = await api.get("/live-monitoring");
+      const res     = await api.get('/live-monitoring');
       const fetched = res.data || [];
+      consecutiveFailures = 0; // reset on success
 
       set((state) => {
         const updatedExams = fetched.map((item) => {
           const existing = state.activeExams.find((p) => p.employeeId === item.employeeId);
           return {
             ...item,
-            cameraActive:    item.cameraActive || (existing ? existing.cameraActive : false),
-            webrtcConnected: existing ? existing.webrtcConnected : (peerConnections[item.employeeId]?.connectionState === 'connected'),
-            cameraStream:    existing ? existing.cameraStream  : null,
-            screenStream:    existing ? existing.screenStream  : null,
-            lastViolation:   existing ? existing.lastViolation : null,
+            cameraActive:    item.cameraActive || (existing?.cameraActive ?? false),
+            webrtcConnected: existing?.webrtcConnected ?? (peerConnections[item.employeeId]?.connectionState === 'connected'),
+            cameraStream:    existing?.cameraStream  ?? null,
+            screenStream:    existing?.screenStream  ?? null,
+            lastViolation:   existing?.lastViolation ?? null,
           };
         });
         return { activeExams: updatedExams };
       });
 
     } catch (err) {
-      // Log once, do not spam console on every poll interval
+      consecutiveFailures++;
       if (err.response?.status === 401) {
-        console.error("[MonitoringStore] 401 on /live-monitoring — token missing or invalid. Check api.js interceptor.");
+        console.error(`[MonitoringStore] 401 — token invalid (failure ${consecutiveFailures}/${MAX_FAILURES}). Check api.js interceptor.`);
       } else {
-        console.error("[MonitoringStore] Failed to fetch live-monitoring:", err.message);
+        console.error('[MonitoringStore] Fetch failed:', err.message);
       }
     }
   },
