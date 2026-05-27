@@ -66,8 +66,8 @@ export default function ExamPage() {
         if (!isChrome && !isEdge && !isFirefox) {
           toast.error('Unsupported browser detected. Please use Chrome, Edge, or Firefox.');
           alert('Unsupported browser detected. Please use Chrome, Edge, or Firefox.');
-          navigate('/dashboard');
           return;
+        }
         // Check if employee already completed this exam
         const myExamsRes = await api.get('/assessments/my');
         if (myExamsRes.data.success) {
