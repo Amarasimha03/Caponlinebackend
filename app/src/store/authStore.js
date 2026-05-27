@@ -82,18 +82,12 @@ const useAuthStore = create((set, get) => ({
       localStorage.setItem(LS_USER_KEY, JSON.stringify(data.user));
       set({ user: data.user, isLoading: false });
 
-      // Verify session with Google Sheets Backend
+      // Verify session with Google Sheets Backend (non-blocking, do NOT force logout unless explicitly requested via Logout button)
       if (data.user?._id) {
         try {
-          const sessionRes = await api.get(`/state/session/${data.user._id}`);
-          if (sessionRes.data.success && sessionRes.data.session) {
-            const sheetSession = sessionRes.data.session;
-            if (sheetSession.status === 'inactive' || sheetSession.status === 'logged_out') {
-              localStorage.removeItem(LS_TOKEN_KEY);
-              localStorage.removeItem(LS_USER_KEY);
-              set({ user: null, token: null });
-            }
-          }
+          await api.get(`/state/session/${data.user._id}`);
+          // We fetch it but we do NOT automatically evict the local session.
+          // This ensures that active users are never logged out unexpectedly due to sheet sync lag/issues.
         } catch {
           // Session check failed — continue with local session
         }
