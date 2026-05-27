@@ -131,20 +131,29 @@ export default function AdminEmployees() {
     toast.success('Employee list exported successfully');
   };
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const { data } = await api.get('/employees');
-        const employeesWithStatus = (data.employees || []).map(e => ({
-          ...e,
-          isActive: e.status === 'Active' || e.isActive, // derive isActive from status if needed
-        }));
-        setEmployees(employeesWithStatus);
-    } catch { toast.error('Failed to load employees'); }
-    setLoading(false);
+      const employeesWithStatus = (data.employees || []).map(e => ({
+        ...e,
+        isActive: e.status === 'Active' || e.isActive, // derive isActive from status if needed
+      }));
+      setEmployees(employeesWithStatus);
+    } catch {
+      if (!isBackground) toast.error('Failed to load employees');
+    }
+    if (!isBackground) setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const intervalId = setInterval(() => {
+      console.log('[AdminEmployees] Polling fresh data from server...');
+      load(true);
+    }, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
