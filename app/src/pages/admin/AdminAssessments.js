@@ -30,6 +30,8 @@ export default function AdminAssessments() {
   const [form, setForm] = useState(defaultForm);
 
   const load = async (isBackground = false) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     if (!isBackground) setLoading(true);
     try {
       const [aRes, eRes] = await Promise.all([api.get('/assessments'), api.get('/employees')]);
