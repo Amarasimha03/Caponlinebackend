@@ -1,14 +1,15 @@
 import axios from "axios";
 
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  "https://testbackend-j6dn.onrender.com/api";
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "https://testbackend-j6dn.onrender.com/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: API_URL,
+  headers: { "Content-Type": "application/json" },
 });
 
-// REQUEST interceptor — runs before every single API call
-// Reads the latest token from localStorage and injects it into the header
+// ── REQUEST interceptor — reads fresh token on EVERY call ────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -20,16 +21,14 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// RESPONSE interceptor — only auto-logout on login 401, never on other calls
+// ── RESPONSE interceptor — only auto-logout on /auth/login 401 ──
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const status = error.response?.status;
-    const url    = error.config?.url || "";
-    const isLoginUrl = url.includes("/login") || url.includes("/auth");
+    const status     = error.response?.status;
+    const url        = error.config?.url || "";
+    const isLoginUrl = url.includes("/auth/login") || url === "/login";
 
-    // Only redirect to login if the login call itself fails with 401
-    // Never auto-logout on monitoring, assessments, employees, or any other endpoint
     if (status === 401 && isLoginUrl) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
