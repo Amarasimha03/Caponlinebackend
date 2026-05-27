@@ -7,7 +7,13 @@ const SOCKET_URL =
 
 // Create ONE global socket instance — never create inside components
 const socket = io(SOCKET_URL, {
-  transports: ['websocket', 'polling'], // polling fallback
+  autoConnect: false,    // do not connect until token is ready
+  auth: (cb) => {
+    // Called fresh on every connection/reconnection attempt
+    const token = localStorage.getItem("token");
+    cb({ token: token ? `Bearer ${token}` : "" });
+  },
+  transports: ["websocket"],
   reconnection: true,
   reconnectionAttempts: Infinity,       // keep trying forever
   reconnectionDelay: 1000,
