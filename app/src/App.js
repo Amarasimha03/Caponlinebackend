@@ -54,7 +54,13 @@ function App() {
       
       // Async background preloading of admin lazy route bundles for 0.0s redirect/routing latency
       const savedUser = localStorage.getItem('portal_user') || localStorage.getItem('user');
-      const isAdmin = user?.role === 'admin' || (savedUser && JSON.parse(savedUser)?.role === 'admin');
+      let parsedUser = null;
+      if (savedUser && savedUser !== 'undefined') {
+        try {
+          parsedUser = JSON.parse(savedUser);
+        } catch {}
+      }
+      const isAdmin = user?.role === 'admin' || parsedUser?.role === 'admin';
       if (isAdmin) {
         import('./pages/admin/AdminDashboard').catch(() => {});
         import('./pages/admin/AdminEmployees').catch(() => {});

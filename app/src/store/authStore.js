@@ -5,7 +5,15 @@ const LS_USER_KEY   = 'portal_user';
 const LS_TOKEN_KEY  = 'token';
 
 const useAuthStore = create((set, get) => ({
-  user:      JSON.parse(localStorage.getItem(LS_USER_KEY) || 'null'),
+  user: (() => {
+    try {
+      const stored = localStorage.getItem(LS_USER_KEY);
+      if (!stored || stored === 'undefined') return null;
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  })(),
   token:     localStorage.getItem(LS_TOKEN_KEY),
   isLoading: false,
   error:     null,
