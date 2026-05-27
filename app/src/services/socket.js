@@ -1,24 +1,24 @@
 import { io } from 'socket.io-client';
 
 const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
   process.env.REACT_APP_SOCKET_URL ||
   'https://testbackend-j6dn.onrender.com';
 
-// Create ONE global socket instance — never create inside components
+// Create ONE global socket instance — never inside components
 const socket = io(SOCKET_URL, {
-  autoConnect: false,    // do not connect until token is ready
+  autoConnect:          false,              // connect only when token confirmed present
+  transports:           ['polling', 'websocket'], // polling FIRST — fixes Render transport close
+  upgrade:              true,              // upgrade to websocket after polling handshake
+  reconnection:         true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay:    2000,
+  reconnectionDelayMax: 10000,
+  timeout:              20000,
   auth: (cb) => {
-    // Called fresh on every connection/reconnection attempt
-    const token = localStorage.getItem("token");
-    cb({ token: token ? `Bearer ${token}` : "" });
+    // Called fresh on every connection and reconnection attempt
+    const token = localStorage.getItem('token');
+    cb({ token: token ? `Bearer ${token}` : '' });
   },
-  transports: ["websocket"],
-  reconnection: true,
-  reconnectionAttempts: Infinity,       // keep trying forever
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  timeout: 20000,
 });
 
 let heartbeatInterval = null;
@@ -28,7 +28,7 @@ socket.on('connect', () => {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
   heartbeatInterval = setInterval(() => {
     if (socket.connected) socket.emit('heartbeat');
-  }, 10000);
+  }, 25000); // 25s — keeps Render from sleeping
 });
 
 socket.on('disconnect', (reason) => {
@@ -37,6 +37,7 @@ socket.on('disconnect', (reason) => {
     clearInterval(heartbeatInterval);
     heartbeatInterval = null;
   }
+  // Transport close on Render — socket will auto-reconnect via polling fallback
 });
 
 socket.on('connect_error', (err) => {
@@ -45,7 +46,6 @@ socket.on('connect_error', (err) => {
 
 socket.on('reconnect', (attempt) => {
   console.log('[Socket] Reconnected after', attempt, 'attempt(s)');
-  // Broadcast so all components know to refetch their data
   socket.emit('client:reconnected');
 });
 
