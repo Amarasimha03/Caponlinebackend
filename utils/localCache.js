@@ -863,10 +863,9 @@ const mongooseMock = {
   },
 };
 
-// ── Exports ──────────────────────────────────────────────────
-
 module.exports = mongooseMock;
 module.exports.persistEntity = persistEntity;
 module.exports.sheetsPost = sheetsPost;
 module.exports.sheetsGet = sheetsGet;
 module.exports.readDB = readDB;
+module.exports.writeDB = writeDB;
