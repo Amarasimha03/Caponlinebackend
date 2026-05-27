@@ -14,6 +14,8 @@ const useMonitoringStore = create((set, get) => ({
 
   // Fetch active exams from backend and merge with current streaming state
   fetchMonitoringData: async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     try {
       const res = await api.get('/live-monitoring');
       const fetched = res.data || [];
