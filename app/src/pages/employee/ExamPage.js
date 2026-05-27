@@ -68,6 +68,16 @@ export default function ExamPage() {
           alert('Unsupported browser detected. Please use Chrome, Edge, or Firefox.');
           navigate('/dashboard');
           return;
+        // Check if employee already completed this exam
+        const myExamsRes = await api.get('/assessments/my');
+        if (myExamsRes.data.success) {
+          const matchedExam = myExamsRes.data.assessments?.find(a => a._id === assessmentId);
+          if (matchedExam && matchedExam.status === 'completed') {
+            toast.error('You have already completed this assessment. Retakes are not allowed.');
+            alert('You have already completed this assessment. Retakes are not allowed.');
+            navigate('/employee/dashboard');
+            return;
+          }
         }
 
         const { data } = await api.get(`/assessments/${assessmentId}`);
