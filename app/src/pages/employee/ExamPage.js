@@ -1188,7 +1188,7 @@ export default function ExamPage() {
                     </h3>
                     <p style={{ margin: '0 0 28px', color: 'var(--text-muted, #64748b)', fontSize: 14, lineHeight: 1.6 }}>
                       Your progress will be saved but the exam will be marked as <strong>Cancelled</strong>.
-                      You will be redirected to the login page.
+                      You will be redirected to the employee dashboard.
                     </p>
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                       <button
