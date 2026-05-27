@@ -14,10 +14,14 @@ const useMonitoringStore = create((set, get) => ({
 
   // Fetch active exams from backend and merge with current streaming state
   fetchMonitoringData: async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("[MonitoringStore] No token found — skipping fetch");
+      return;
+    }
+
     try {
-      const res = await api.get('/live-monitoring');
+      const res = await api.get("/live-monitoring");
       const fetched = res.data || [];
 
       set((state) => {
@@ -25,17 +29,23 @@ const useMonitoringStore = create((set, get) => ({
           const existing = state.activeExams.find((p) => p.employeeId === item.employeeId);
           return {
             ...item,
-            cameraActive: item.cameraActive || (existing ? existing.cameraActive : false),
+            cameraActive:    item.cameraActive || (existing ? existing.cameraActive : false),
             webrtcConnected: existing ? existing.webrtcConnected : (peerConnections[item.employeeId]?.connectionState === 'connected'),
-            cameraStream: existing ? existing.cameraStream : null,
-            screenStream: existing ? existing.screenStream : null,
-            lastViolation: existing ? existing.lastViolation : null,
+            cameraStream:    existing ? existing.cameraStream  : null,
+            screenStream:    existing ? existing.screenStream  : null,
+            lastViolation:   existing ? existing.lastViolation : null,
           };
         });
         return { activeExams: updatedExams };
       });
+
     } catch (err) {
-      console.error('[MonitoringStore] Failed to fetch live-monitoring:', err);
+      // Log once, do not spam console on every poll interval
+      if (err.response?.status === 401) {
+        console.error("[MonitoringStore] 401 on /live-monitoring — token missing or invalid. Check api.js interceptor.");
+      } else {
+        console.error("[MonitoringStore] Failed to fetch live-monitoring:", err.message);
+      }
     }
   },
 
