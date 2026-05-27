@@ -201,8 +201,25 @@ function QuestionCard({ qa, index }) {
 export default function ResultPage() {
   const { examId, employeeId, resultId } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => {
+    try {
+      const activeResultId = resultId || localStorage.getItem(`lastResultId_${examId}`);
+      if (activeResultId) {
+        const cached = localStorage.getItem(`result_detail_${activeResultId}`);
+        return cached ? JSON.parse(cached) : null;
+      }
+    } catch {}
+    return null;
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const activeResultId = resultId || localStorage.getItem(`lastResultId_${examId}`);
+      if (activeResultId) {
+        return !localStorage.getItem(`result_detail_${activeResultId}`);
+      }
+    } catch {}
+    return true;
+  });
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -222,6 +239,10 @@ export default function ResultPage() {
 
         if (!activeResultId) throw new Error("No result available");
 
+        if (activeResultId && examId) {
+          localStorage.setItem(`lastResultId_${examId}`, activeResultId);
+        }
+
         const res = await api.get(`/exam/result/${activeResultId}`);
 
         // ── Guard: ensure questionAnalysis always exists ──
@@ -229,7 +250,14 @@ export default function ResultPage() {
           res.data.questionAnalysis = [];
         }
 
+        if (res.data && Array.isArray(res.data.questionAnalysis)) {
+          res.data.questionAnalysis = [...res.data.questionAnalysis].sort((a, b) =>
+            String(a.question || '').localeCompare(String(b.question || ''), undefined, { numeric: true, sensitivity: 'base' })
+          );
+        }
+
         setData(res.data);
+        localStorage.setItem(`result_detail_${activeResultId}`, JSON.stringify(res.data));
 
         // Clear cached exam state
         if (examId) localStorage.removeItem(`examState_${examId}`);

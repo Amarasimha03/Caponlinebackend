@@ -80,7 +80,10 @@ const useAuthStore = create((set, get) => ({
   fetchMe: async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    set({ isLoading: true });
+    const hasUser = !!get().user;
+    if (!hasUser) {
+      set({ isLoading: true });
+    }
     try {
       const { data } = await api.get('/auth/me');
       // Persist user to localStorage so it survives refreshes

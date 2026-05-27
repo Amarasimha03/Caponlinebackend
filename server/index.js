@@ -15,6 +15,7 @@ const cors = require('cors');
 const localCache = require('./utils/localCache');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const clientBuildPath = path.join(__dirname, 'build');
 
 // ── Startup diagnostics ─────────────────────────────────────
 console.log('🔍 ENV CHECK:');
@@ -40,6 +41,8 @@ const examRoutes = require('./routes/examRoutes');
 const sheetsWebhookRoutes = require('./routes/sheetsWebhook');
 
 const app = express();
+const compression = require('compression');
+app.use(compression());
 
 // CORS helper for localhost dev ports and dotenv config URL
 const allowedOrigins = [
@@ -95,6 +98,15 @@ async function startServer() {
     console.error('❌ DB connect failed, using seed-only state:', err.message);
   }
 
+  // Auto sync Google Sheets every 10 seconds
+  setInterval(async () => {
+    try {
+      await localCache.connect(true);
+    } catch (err) {
+      console.error('❌ Auto sync failed:', err.message);
+    }
+  }, 10000);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
@@ -115,7 +127,7 @@ const { protect, adminOnly } = require('./middleware/auth');
 // ── Force-reload data from Google Sheets (admin only) ────────────
 app.post('/api/sync-db', protect, adminOnly, async (req, res) => {
   try {
-    await localCache.connect();
+    await localCache.connect(true);
     const { readDB, writeDB } = require('./utils/localCache');
     const db = readDB();
 
@@ -327,9 +339,18 @@ app.get('/api/health', (req, res) =>
   res.json({ status: 'OK', timestamp: new Date().toISOString() })
 );
 
-// Serve Static Assets from React app build in production
-const clientBuildPath = path.join(__dirname, 'build');
-app.use(express.static(clientBuildPath));
+// Serve Static Assets with aggressive browser caching in production
+app.use(express.static(clientBuildPath, {
+  maxAge: '1y',
+  etag: true,
+  setHeaders: (res, filepath) => {
+    if (path.basename(filepath) === 'index.html') {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
 
 // SPA fallback: redirect all unhandled requests to React index.html so refreshing routes (e.g. /dashboard) doesn't throw 404
 app.get('/*splat', (req, res, next) => {

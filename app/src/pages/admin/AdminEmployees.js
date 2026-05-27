@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Search, Edit, Trash2, X, BookOpen, Eye, Filter, RefreshCw, Upload, Download, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import socket from '../../services/socket';
 
 const DEPARTMENTS = ['General', 'Engineering', 'Marketing', 'HR', 'Finance', 'Operations', 'Sales', 'IT', 'Legal'];
 const ROLES = ['employee', 'admin'];
@@ -12,8 +14,15 @@ const COMPANIES = ['Cabptiod Solutions', 'TCS', 'Infosys', 'Wipro', 'HCL Technol
 const defaultForm = { fullName: '', employeeId: '', email: '', phone: '', department: 'General', designation: 'Software Engineer', designationCustom: '', company: 'Cabptiod Solutions', companyCustom: '', role: 'employee', password: '', status: 'Active' };
 
 export default function AdminEmployees() {
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_employees_list');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem('admin_employees_list');
+  });
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
@@ -134,7 +143,8 @@ export default function AdminEmployees() {
   const load = async (isBackground = false) => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    if (!isBackground) setLoading(true);
+    const hasCache = employees.length > 0;
+    if (!isBackground && !hasCache) setLoading(true);
     try {
       const { data } = await api.get('/employees');
       const employeesWithStatus = (data.employees || []).map(e => ({
@@ -142,10 +152,11 @@ export default function AdminEmployees() {
         isActive: e.status === 'Active' || e.isActive, // derive isActive from status if needed
       }));
       setEmployees(employeesWithStatus);
+      localStorage.setItem('admin_employees_list', JSON.stringify(employeesWithStatus));
     } catch {
-      if (!isBackground) toast.error('Failed to load employees');
+      if (!isBackground && !hasCache) toast.error('Failed to load employees');
     }
-    if (!isBackground) setLoading(false);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -154,7 +165,18 @@ export default function AdminEmployees() {
       console.log('[AdminEmployees] Polling fresh data from server...');
       load(true);
     }, 30000);
-    return () => clearInterval(intervalId);
+
+    // Live Socket sync hook
+    socket.on('db:sync', () => {
+      console.log('📡 Real-time sync signal received: updating employee list');
+      load(true);
+    });
+
+    return () => {
+      clearInterval(intervalId);
+      socket.off('db:sync');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -186,10 +208,25 @@ export default function AdminEmployees() {
     setSubmitting(false);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this employee?')) return;
-    try { await api.delete(`/employees/${id}`); toast.success('Employee deleted'); load(); }
-    catch { toast.error('Failed to delete'); }
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const triggerDelete = (id) => {
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/employees/${deleteTarget}`);
+      toast.success('Employee permanently deleted');
+      setDeleteTarget(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete employee');
+    }
+    setDeleteLoading(false);
   };
 
   const openEdit = (emp) => {
@@ -346,7 +383,7 @@ export default function AdminEmployees() {
                       <button className="btn btn-ghost btn-sm" onClick={() => openEdit(emp)} title="Edit">
                         <Edit size={14} />
                       </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(emp._id)} title="Delete">
+                      <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(emp._id)} title="Delete">
                         <Trash2 size={14} color="var(--danger)" />
                       </button>
                     </div>
@@ -646,6 +683,14 @@ export default function AdminEmployees() {
           </motion.div>
         )}
       </AnimatePresence>
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Delete Employee"
+        message="Are you sure you want to permanently delete this employee? This will completely remove them and all their result history from the database and Google Sheets."
+        loading={deleteLoading}
+      />
     </div>
   );
 }

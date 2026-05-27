@@ -21,7 +21,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ── RESPONSE interceptor — only auto-logout on /auth/login 401 ──
+// ── RESPONSE interceptor — auto-logout on non-login 401 errors (expired/invalid token) ──
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -29,7 +29,7 @@ api.interceptors.response.use(
     const url        = error.config?.url || "";
     const isLoginUrl = url.includes("/auth/login") || url === "/login";
 
-    if (status === 401 && isLoginUrl) {
+    if (status === 401 && !isLoginUrl) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("portal_user");

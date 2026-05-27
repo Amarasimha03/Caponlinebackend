@@ -156,10 +156,21 @@ exports.deleteEmployee = async (req, res) => {
   try {
     const employee = await Employee.findByIdAndDelete(req.params.id);
 
-    // Audit
     if (employee) {
+      // Cascading delete associated results
+      const results = await Result.find({ employee: req.params.id });
+      await Result.deleteMany({ employee: req.params.id });
+      for (const r of results) {
+        persistEntity('deleteEntity', { sheetName: 'results', _id: r._id.toString() }).catch(()=>{});
+      }
+
+      // Cascading delete associated violations
+      await Violation.deleteMany({ employee: req.params.id });
+
+      // Delete employee from Google Sheets
       persistEntity('deleteEntity', { sheetName: 'employees', _id: req.params.id }).catch(()=>{});
 
+      // Audit
       await AuditLog.create({
         user: req.user._id, action: 'employee-deactivated',
         description: `Deleted employee: ${employee.fullName} (${employee.email})`,
@@ -167,7 +178,7 @@ exports.deleteEmployee = async (req, res) => {
       });
     }
 
-    res.json({ success: true, message: 'Employee deleted' });
+    res.json({ success: true, message: 'Employee and all related records deleted' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
 

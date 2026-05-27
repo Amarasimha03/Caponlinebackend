@@ -5,17 +5,35 @@ import api from '../../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
-  const [violations, setViolations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_dashboard_stats');
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  });
+  const [analytics, setAnalytics] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_dashboard_analytics');
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  });
+  const [violations, setViolations] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_dashboard_violations');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem('admin_dashboard_stats');
+  });
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
   const load = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    setLoading(true);
+    const hasCache = !!localStorage.getItem('admin_dashboard_stats');
+    if (!hasCache) setLoading(true);
     try {
       const [statsRes, analyticsRes, violRes] = await Promise.all([
         api.get('/assessments/stats'),
@@ -25,6 +43,10 @@ export default function AdminDashboard() {
       setStats(statsRes.data.stats);
       setAnalytics(analyticsRes.data.analytics);
       setViolations(violRes.data.stats || []);
+      
+      localStorage.setItem('admin_dashboard_stats', JSON.stringify(statsRes.data.stats));
+      localStorage.setItem('admin_dashboard_analytics', JSON.stringify(analyticsRes.data.analytics));
+      localStorage.setItem('admin_dashboard_violations', JSON.stringify(violRes.data.stats || []));
     } catch (err) { console.error(err); }
     setLoading(false);
   }, []);

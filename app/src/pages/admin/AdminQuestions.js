@@ -5,6 +5,8 @@ import { Plus, Trash2, X, ArrowLeft, CheckCircle, Upload, Sparkles, Loader2, Sav
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import CopyButton from '../../components/CopyButton';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import socket from '../../services/socket';
 
 const TYPES = ['mcq', 'multiple-select', 'true-false', 'coding'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
@@ -30,13 +32,26 @@ export default function AdminQuestions() {
         api.get(`/questions?assessmentId=${assessmentId}`),
         api.get(`/assessments/${assessmentId}`),
       ]);
-      setQuestions(qRes.data.questions);
+      const sortedQ = (qRes.data.questions || []).sort((a, b) =>
+        String(a.title || '').localeCompare(String(b.title || ''), undefined, { numeric: true, sensitivity: 'base' })
+      );
+      setQuestions(sortedQ);
       setAssessment(aRes.data.assessment);
     } catch { toast.error('Failed to load'); }
     setLoading(false);
   }, [assessmentId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    // Live Socket sync hook
+    socket.on('db:sync', () => {
+      console.log('📡 Real-time sync signal received: updating question list');
+      load();
+    });
+    return () => {
+      socket.off('db:sync');
+    };
+  }, [load]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,10 +64,25 @@ export default function AdminQuestions() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this question?')) return;
-    try { await api.delete(`/questions/${id}`); toast.success('Deleted'); load(); }
-    catch { toast.error('Failed'); }
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const triggerDelete = (id) => {
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/questions/${deleteTarget}`);
+      toast.success('Question permanently deleted');
+      setDeleteTarget(null);
+      load();
+    } catch {
+      toast.error('Failed to delete question');
+    }
+    setDeleteLoading(false);
   };
 
   const updateOption = (idx, field, value) => {
@@ -257,7 +287,7 @@ const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
                   ))}
                 </div>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(q._id)}>
+              <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(q._id)}>
                 <Trash2 size={15} color="var(--danger)" />
               </button>
             </div>
@@ -587,6 +617,14 @@ const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
           </motion.div>
         )}
       </AnimatePresence>
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Delete Question"
+        message="Are you sure you want to permanently delete this MCQ? This will completely remove it from MongoDB and Google Sheets databases."
+        loading={deleteLoading}
+      />
     </div>
   );
 }

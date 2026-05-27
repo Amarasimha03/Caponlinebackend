@@ -1,27 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './store/authStore';
 import socket from './services/socket';
 
-// Pages
-import LoginPage from './pages/LoginPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminEmployees from './pages/admin/AdminEmployees';
-import AdminAssessments from './pages/admin/AdminAssessments';
-import AdminQuestions from './pages/admin/AdminQuestions';
-import AdminResults from './pages/admin/AdminResults';
-import AdminViolations from './pages/admin/AdminViolations';
-import AdminMonitoring from './pages/admin/AdminMonitoring';
-import EmployeeDashboard from './pages/employee/EmployeeDashboard';
-import ExamPage from './pages/employee/ExamPage';
-import ResultPage from './pages/employee/ResultPage';
-import ExamTerminatedPage from './pages/employee/ExamTerminatedPage';
-
 // Layout
 import AdminLayout from './layouts/AdminLayout';
 import EmployeeLayout from './layouts/EmployeeLayout';
+
+// Pages via Lazy Loading (Code Splitting)
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminEmployees = lazy(() => import('./pages/admin/AdminEmployees'));
+const AdminAssessments = lazy(() => import('./pages/admin/AdminAssessments'));
+const AdminQuestions = lazy(() => import('./pages/admin/AdminQuestions'));
+const AdminResults = lazy(() => import('./pages/admin/AdminResults'));
+const AdminViolations = lazy(() => import('./pages/admin/AdminViolations'));
+const AdminMonitoring = lazy(() => import('./pages/admin/AdminMonitoring'));
+const EmployeeDashboard = lazy(() => import('./pages/employee/EmployeeDashboard'));
+const ExamPage = lazy(() => import('./pages/employee/ExamPage'));
+const ResultPage = lazy(() => import('./pages/employee/ResultPage'));
+const ExamTerminatedPage = lazy(() => import('./pages/employee/ExamTerminatedPage'));
 
 const NavigateToResult = () => {
   const { examId } = useParams();
@@ -41,20 +41,34 @@ const ProtectedRoute = ({ children, role }) => {
 };
 
 function App() {
-  const { fetchMe, token } = useAuthStore();
+  const { fetchMe, token, user } = useAuthStore();
 
   useEffect(() => {
     if (token) {
-      fetchMe();
+      if (!user) {
+        fetchMe();
+      }
       if (!socket.connected) {
         socket.connect();
+      }
+      
+      // Async background preloading of admin lazy route bundles for 0.0s redirect/routing latency
+      const savedUser = localStorage.getItem('portal_user') || localStorage.getItem('user');
+      const isAdmin = user?.role === 'admin' || (savedUser && JSON.parse(savedUser)?.role === 'admin');
+      if (isAdmin) {
+        import('./pages/admin/AdminDashboard').catch(() => {});
+        import('./pages/admin/AdminEmployees').catch(() => {});
+        import('./pages/admin/AdminAssessments').catch(() => {});
+        import('./pages/admin/AdminResults').catch(() => {});
+        import('./pages/admin/AdminViolations').catch(() => {});
+        import('./pages/admin/AdminMonitoring').catch(() => {});
       }
     } else {
       if (socket.connected) {
         socket.disconnect();
       }
     }
-  }, [token, fetchMe]);
+  }, [token, user, fetchMe]);
 
   return (
     <>
@@ -66,43 +80,45 @@ function App() {
           error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
         }}
       />
-      <Routes>
-        {/* Public */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/exam-terminated" element={<ExamTerminatedPage />} />
+      <Suspense fallback={<div className="loading-center"><div className="loading-spinner" /></div>}>
+        <Routes>
+          {/* Public */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/exam-terminated" element={<ExamTerminatedPage />} />
 
-        {/* Admin */}
-        <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="employees" element={<AdminEmployees />} />
-          <Route path="assessments" element={<AdminAssessments />} />
-          <Route path="questions/:assessmentId" element={<AdminQuestions />} />
-          <Route path="results" element={<AdminResults />} />
-          <Route path="result/:employeeId/:examId" element={<ResultPage />} />
-          <Route path="violations" element={<AdminViolations />} />
-          <Route path="monitoring" element={<AdminMonitoring />} />
-        </Route>
+          {/* Admin */}
+          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="employees" element={<AdminEmployees />} />
+            <Route path="assessments" element={<AdminAssessments />} />
+            <Route path="questions/:assessmentId" element={<AdminQuestions />} />
+            <Route path="results" element={<AdminResults />} />
+            <Route path="result/:employeeId/:examId" element={<ResultPage />} />
+            <Route path="violations" element={<AdminViolations />} />
+            <Route path="monitoring" element={<AdminMonitoring />} />
+          </Route>
 
-        {/* Employee */}
-        <Route path="/employee" element={<ProtectedRoute role="employee"><EmployeeLayout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/employee/dashboard" replace />} />
-          <Route path="dashboard" element={<EmployeeDashboard />} />
-          <Route path="result/:examId" element={<ResultPage />} />
-        </Route>
+          {/* Employee */}
+          <Route path="/employee" element={<ProtectedRoute role="employee"><EmployeeLayout /></ProtectedRoute>}>
+            <Route index element={<Navigate to="/employee/dashboard" replace />} />
+            <Route path="dashboard" element={<EmployeeDashboard />} />
+            <Route path="result/:examId" element={<ResultPage />} />
+          </Route>
 
-        {/* Fallbacks & Compatibility */}
-        <Route path="/dashboard" element={<Navigate to="/employee/dashboard" replace />} />
-        <Route path="/dashboard/result/:examId" element={<NavigateToResult />} />
+          {/* Fallbacks & Compatibility */}
+          <Route path="/dashboard" element={<Navigate to="/employee/dashboard" replace />} />
+          <Route path="/dashboard/result/:examId" element={<NavigateToResult />} />
 
-        {/* Exam - fullscreen mode, no layout */}
-        <Route path="/exam/:assessmentId" element={<ProtectedRoute role="employee"><ExamPage /></ProtectedRoute>} />
+          {/* Exam - fullscreen mode, no layout */}
+          <Route path="/exam/:assessmentId" element={<ProtectedRoute role="employee"><ExamPage /></ProtectedRoute>} />
 
-        {/* Default */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+          {/* Default */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

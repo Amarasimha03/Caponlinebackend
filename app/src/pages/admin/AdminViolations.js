@@ -4,16 +4,30 @@ import { AlertTriangle, Search } from 'lucide-react';
 import api from '../../services/api';
 
 export default function AdminViolations() {
-  const [violations, setViolations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [violations, setViolations] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_violations_list');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem('admin_violations_list');
+  });
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
   useEffect(() => {
     (async () => {
-      try { const { data } = await api.get('/violations'); setViolations(data.violations); } catch {}
+      const hasCache = violations.length > 0;
+      if (!hasCache) setLoading(true);
+      try {
+        const { data } = await api.get('/violations');
+        setViolations(data.violations || []);
+        localStorage.setItem('admin_violations_list', JSON.stringify(data.violations || []));
+      } catch {}
       setLoading(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const TYPES = [...new Set(violations.map(v => v.type))];
@@ -49,7 +63,7 @@ export default function AdminViolations() {
           <thead><tr><th>Employee</th><th>Assessment</th><th>Type</th><th>Severity</th><th>Time</th></tr></thead>
           <tbody>
             {filtered.map((v, i) => (
-              <motion.tr key={v._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
+              <motion.tr key={v._id ? `${v._id}-${i}` : i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
                 <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div className="avatar" style={{ width: 30, height: 30, fontSize: 12, background: 'var(--gradient-danger)' }}>{v.employee?.fullName?.[0]}</div>
                   <div><div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{v.employee?.fullName}</div></div>

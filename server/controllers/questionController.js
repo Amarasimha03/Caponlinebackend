@@ -172,6 +172,9 @@ exports.updateQuestion = async (req, res) => {
 exports.deleteQuestion = async (req, res) => {
   try {
     const question = await Question.findByIdAndDelete(req.params.id);
+    if (question) {
+      persistEntity('deleteEntity', { sheetName: 'questions', _id: req.params.id }).catch(()=>{});
+    }
     if (question?.assessment) {
       const assessment = await Assessment.findByIdAndUpdate(question.assessment, { $pull: { questions: question._id } }, { new: true });
       if (assessment) {

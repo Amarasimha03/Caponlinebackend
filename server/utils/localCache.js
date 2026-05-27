@@ -202,9 +202,10 @@ function hydrateSheetsData(raw) {
 
   // ── employees ──
   if (Array.isArray(raw.employees) && raw.employees.length > 0) {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').toLowerCase().trim();
     const adminFromSheets = raw.employees.find(
-      (e) => e.role === 'admin' || e.email === adminEmail
+      (e) => String(e.role || '').toLowerCase().trim() === 'admin' || 
+             String(e.email || '').toLowerCase().trim() === adminEmail
     );
     const sheetEmployees = raw.employees.map((e) => ({
       _id: e._id || generateId(),
@@ -371,6 +372,15 @@ function matchesQuery(item, query) {
   });
 }
 
+function sortQuestionsNumerically(questions) {
+  if (!Array.isArray(questions)) return [];
+  return [...questions].sort((a, b) => {
+    const titleA = String(a?.title || '');
+    const titleB = String(b?.title || '');
+    return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
+
 // ── QueryChain ───────────────────────────────────────────────
 
 class QueryChain {
@@ -400,8 +410,10 @@ class QueryChain {
 
       if (targetPath === 'questions') {
         if (Array.isArray(result.questions)) {
-          result.questions = result.questions.map(
-            (qId) => resolve(qId, db.questions) || { _id: qId, toObject: () => ({ _id: qId }) }
+          result.questions = sortQuestionsNumerically(
+            result.questions.map(
+              (qId) => resolve(qId, db.questions) || { _id: qId, toObject: () => ({ _id: qId }) }
+            )
           );
         }
       } else if (targetPath === 'assignedAssessments') {
@@ -422,8 +434,10 @@ class QueryChain {
           const resolved = resolve(result[targetPath], col);
           if (resolved && targetPath === 'assessment' && Array.isArray(resolved.questions)) {
             // Automatically populate nested questions for assessment to support nested populate controller queries
-            resolved.questions = resolved.questions.map(
-              (qId) => resolve(qId, db.questions) || { _id: qId, toObject: () => ({ _id: qId }) }
+            resolved.questions = sortQuestionsNumerically(
+              resolved.questions.map(
+                (qId) => resolve(qId, db.questions) || { _id: qId, toObject: () => ({ _id: qId }) }
+              )
             );
           }
           result[targetPath] = resolved || result[targetPath];
@@ -509,6 +523,7 @@ class MockModel {
     const colName = name.toLowerCase() + 's';
     db[colName] = items;
     writeDB(db);
+    clearApiResponseCache();
   }
 
   toObject() {
@@ -541,6 +556,9 @@ class MockModel {
     let list = MockModel.getCollection(this.name);
     if (query && Object.keys(query).length > 0) {
       list = list.filter((item) => matchesQuery(item, query));
+    }
+    if (this.name === 'Question') {
+      list = sortQuestionsNumerically(list);
     }
     return new QueryChain(list.map((x) => new this(x)));
   }
@@ -828,6 +846,99 @@ SchemaMock.Types = { ObjectId: String, Mixed: Object };
 
 // ── mongoose mock (the exported object) ─────────────────────
 
+let lastSyncTime = 0;
+const SYNC_COOLDOWN = 30000; // 30 seconds sync cooldown
+
+let apiResponseCache = new Map();
+
+function getCachedResponse(key) {
+  return apiResponseCache.get(key);
+}
+
+function setCachedResponse(key, value) {
+  apiResponseCache.set(key, value);
+}
+
+function clearApiResponseCache() {
+  if (apiResponseCache.size > 0) {
+    console.log(`🧹 Clearing ${apiResponseCache.size} API response cache entries due to DB write/sync.`);
+    apiResponseCache.clear();
+  }
+}
+
+function syncWithSheets(newData) {
+  if (!IN_MEMORY_DB) {
+    IN_MEMORY_DB = newData;
+    return { changed: true, stats: { added: 0, updated: 0, deleted: 0 } };
+  }
+
+  let totalAdded = 0;
+  let totalUpdated = 0;
+  let totalDeleted = 0;
+  let changesDetected = false;
+
+  const collections = ['employees', 'questions', 'assessments', 'results', 'violations', 'auditlogs'];
+
+  collections.forEach(col => {
+    const existingList = IN_MEMORY_DB[col] || [];
+    const newList = newData[col] || [];
+
+    const existingMap = new Map(existingList.map(item => [String(item._id), item]));
+    const newMap = new Map(newList.map(item => [String(item._id), item]));
+
+    let colAdded = 0;
+    let colUpdated = 0;
+    let colDeleted = 0;
+
+    // 1. Check for additions and updates
+    newList.forEach(newItem => {
+      const existingItem = existingMap.get(String(newItem._id));
+      if (!existingItem) {
+        colAdded++;
+        changesDetected = true;
+      } else {
+        // Simple and robust comparison using JSON serialization
+        const isDifferent = JSON.stringify(existingItem) !== JSON.stringify(newItem);
+        if (isDifferent) {
+          colUpdated++;
+          changesDetected = true;
+        }
+      }
+    });
+
+    // 2. Check for deletions
+    existingList.forEach(existingItem => {
+      if (!newMap.has(String(existingItem._id))) {
+        colDeleted++;
+        changesDetected = true;
+      }
+    });
+
+    totalAdded += colAdded;
+    totalUpdated += colUpdated;
+    totalDeleted += colDeleted;
+
+    if (colAdded > 0 || colUpdated > 0 || colDeleted > 0) {
+      console.log(`  [${col}] ➕ Added: ${colAdded}, 📝 Updated: ${colUpdated}, ❌ Deleted: ${colDeleted}`);
+    }
+  });
+
+  // Make sure admin dedup remains consistent
+  const seen = new Map();
+  newData.employees.forEach(e => {
+    const key = (e.email || '').toLowerCase().trim();
+    if (key) seen.set(key, e);
+  });
+  newData.employees = Array.from(seen.values());
+
+  IN_MEMORY_DB = newData;
+
+  return {
+    changed: changesDetected,
+    stats: { added: totalAdded, updated: totalUpdated, deleted: totalDeleted }
+  };
+}
+
 const mongooseMock = {
   Schema: SchemaMock,
 
@@ -841,7 +952,13 @@ const mongooseMock = {
    * Called once at server startup.
    * Fetches the full DB from Google Sheets and hydrates IN_MEMORY_DB.
    */
-  async connect() {
+  async connect(force = false) {
+    const now = Date.now();
+    if (IN_MEMORY_DB && !force && (now - lastSyncTime < SYNC_COOLDOWN)) {
+      console.log('⚡ Using cached in-memory DB (sync cooldown active)');
+      return true;
+    }
+
     console.log('⚡ Initialising in-memory DB with Google Sheets sync...');
     const SHEETS_URL = getSheetsUrl();
 
@@ -859,16 +976,22 @@ const mongooseMock = {
       const json = await res.json();
 
       if (json && json.success && json.data) {
-        IN_MEMORY_DB = hydrateSheetsData(json.data);
+        const freshDB = hydrateSheetsData(json.data);
+        const { changed, stats } = syncWithSheets(freshDB);
 
-        // Dedup employees by email — prevents ghost 5th employee when admin
-        // appears in both the seed state AND in the Google Sheet
-        const seen = new Map();
-        IN_MEMORY_DB.employees.forEach(e => {
-          const key = (e.email || '').toLowerCase().trim();
-          if (key) seen.set(key, e);
-        });
-        IN_MEMORY_DB.employees = Array.from(seen.values());
+        if (changed) {
+          console.log(`🔄 Sync completed at ${new Date().toISOString()} — Added: ${stats.added}, Updated: ${stats.updated}, Deleted: ${stats.deleted}`);
+          clearApiResponseCache();
+          
+          // Emit socket signal to active admin room
+          if (global.io) {
+            global.io.to('admin-room').emit('db:sync', {
+              timestamp: new Date().toISOString(),
+              stats
+            });
+            console.log('📡 Broadcasted db:sync via WebSockets to admins');
+          }
+        }
 
         const counts = Object.entries(IN_MEMORY_DB)
           .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.length : 0}`)
@@ -886,6 +1009,7 @@ const mongooseMock = {
       readDB(); // ensure initialized
     }
 
+    lastSyncTime = Date.now();
     console.log('⚡ In-memory DB ready.');
     return true;
   },
@@ -902,3 +1026,6 @@ module.exports.sheetsPost = sheetsPost;
 module.exports.sheetsGet = sheetsGet;
 module.exports.readDB = readDB;
 module.exports.writeDB = writeDB;
+module.exports.getCachedResponse = getCachedResponse;
+module.exports.setCachedResponse = setCachedResponse;
+module.exports.clearApiResponseCache = clearApiResponseCache;

@@ -12,7 +12,7 @@ import useAuthStore from '../../store/authStore';
 export default function ExamPage() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
 
   const [phase, setPhase]           = useState('setup'); // setup, webcam, exam, submitted
   const [assessment, setAssessment] = useState(null);
@@ -82,7 +82,10 @@ export default function ExamPage() {
 
         const { data } = await api.get(`/assessments/${assessmentId}`);
         setAssessment(data.assessment);
-        setQuestions(data.assessment.questions || []);
+        const sortedQ = (data.assessment.questions || []).sort((a, b) =>
+          String(a.title || '').localeCompare(String(b.title || ''), undefined, { numeric: true, sensitivity: 'base' })
+        );
+        setQuestions(sortedQ);
         setMaxViolations(data.assessment.maxViolations || 3);
         setTimer((data.assessment.duration || 30) * 60);
 
@@ -760,11 +763,12 @@ export default function ExamPage() {
       // 6. Disconnect socket for this exam session
       socketRef.current?.emit('exam:cancelled', { employeeId: user?._id, assessmentId });
 
-      // 7. Redirect to employee dashboard if user cancelled, otherwise redirect to login
+      // 7. Redirect to employee dashboard if user cancelled, otherwise redirect to exam-terminated
       if (reason === 'User Cancelled Exam') {
         navigate("/employee/dashboard", { replace: true });
       } else {
-        navigate("/login", { replace: true });
+        logout();
+        navigate("/exam-terminated", { replace: true });
       }
     } catch (err) {
       console.error("Auto submit failed:", err);
@@ -782,7 +786,8 @@ export default function ExamPage() {
       if (reason === 'User Cancelled Exam') {
         navigate("/employee/dashboard", { replace: true });
       } else {
-        navigate("/login", { replace: true });
+        logout();
+        navigate("/exam-terminated", { replace: true });
       }
     }
   };

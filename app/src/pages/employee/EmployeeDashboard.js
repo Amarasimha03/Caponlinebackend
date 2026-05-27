@@ -185,7 +185,7 @@ export default function EmployeeDashboard() {
               </thead>
               <tbody>
                 {validAssessments.map((a, i) => (
-                  <motion.tr key={a._id || i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.025, duration: 0.15 }}>
+                  <motion.tr key={a._id ? `${a._id}-${i}` : i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.025, duration: 0.15 }}>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{a.title}</div>
                       {a.description && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{a.description.substring(0, 50)}{a.description.length > 50 ? '…' : ''}</div>}
@@ -247,7 +247,7 @@ export default function EmployeeDashboard() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
             {completed.map((a, i) => (
-              <motion.div key={a._id || i} className="card" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03, duration: 0.18 }}
+              <motion.div key={a._id ? `${a._id}-${i}` : i} className="card" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03, duration: 0.18 }}
                 style={{ padding: '18px 20px' }}>
                 <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, marginBottom: 10 }}>{a.title}</div>
                 <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>

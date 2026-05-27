@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import socket from '../../services/socket';
 
 const CATEGORIES = ['General', 'Technical', 'Aptitude', 'HR', 'Coding'];
 const STATUS_COLORS = { draft: 'badge-muted', active: 'badge-success', scheduled: 'badge-warning', completed: 'badge-info' };
@@ -16,9 +18,21 @@ const defaultForm = {
 };
 
 export default function AdminAssessments() {
-  const [assessments, setAssessments] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [assessments, setAssessments] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_assessments_list');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [employees, setEmployees] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_employees_list');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem('admin_assessments_list');
+  });
   const [showModal, setShowModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(null); // assessment to send
   const [editing, setEditing] = useState(null);
@@ -32,15 +46,20 @@ export default function AdminAssessments() {
   const load = async (isBackground = false) => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    if (!isBackground) setLoading(true);
+    const hasCache = assessments.length > 0;
+    if (!isBackground && !hasCache) setLoading(true);
     try {
       const [aRes, eRes] = await Promise.all([api.get('/assessments'), api.get('/employees')]);
-      setAssessments(aRes.data.assessments || []);
-      setEmployees(eRes.data.employees || []);
+      const assessmentsList = aRes.data.assessments || [];
+      const employeesList = eRes.data.employees || [];
+      setAssessments(assessmentsList);
+      setEmployees(employeesList);
+      localStorage.setItem('admin_assessments_list', JSON.stringify(assessmentsList));
+      localStorage.setItem('admin_employees_list', JSON.stringify(employeesList));
     } catch {
-      if (!isBackground) toast.error('Failed to load data');
+      if (!isBackground && !hasCache) toast.error('Failed to load data');
     }
-    if (!isBackground) setLoading(false);
+    setLoading(false);
   };
   useEffect(() => {
     load();
@@ -48,7 +67,18 @@ export default function AdminAssessments() {
       console.log('[AdminAssessments] Polling fresh data from server...');
       load(true);
     }, 30000);
-    return () => clearInterval(intervalId);
+
+    // Live Socket sync hook
+    socket.on('db:sync', () => {
+      console.log('📡 Real-time sync signal received: updating assessment list');
+      load(true);
+    });
+
+    return () => {
+      clearInterval(intervalId);
+      socket.off('db:sync');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e) => {
@@ -70,10 +100,25 @@ export default function AdminAssessments() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this assessment and all its questions?')) return;
-    try { await api.delete(`/assessments/${id}`); toast.success('Deleted'); load(); }
-    catch { toast.error('Failed to delete'); }
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const triggerDelete = (id) => {
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/assessments/${deleteTarget}`);
+      toast.success('Assessment and all related records permanently deleted');
+      setDeleteTarget(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete assessment');
+    }
+    setDeleteLoading(false);
   };
 
   const openEdit = (a) => {
@@ -215,7 +260,7 @@ export default function AdminAssessments() {
               <button className="btn btn-ghost btn-sm" onClick={() => openEdit(a)}>
                 <Edit size={14} />
               </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(a._id)}>
+              <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(a._id)}>
                 <Trash2 size={14} color="var(--danger)" />
               </button>
             </div>
@@ -389,6 +434,14 @@ export default function AdminAssessments() {
           </motion.div>
         )}
       </AnimatePresence>
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Delete Assessment"
+        message="Are you sure you want to permanently delete this assessment? This will completely remove the assessment, all its MCQs/questions, result logs, and violation histories from MongoDB and Google Sheets."
+        loading={deleteLoading}
+      />
     </div>
   );
 }
