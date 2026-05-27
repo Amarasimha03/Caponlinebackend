@@ -284,6 +284,8 @@ function hydrateSheetsData(raw) {
       startedAt: r.startedAt || '',
       submittedAt: r.submittedAt || '',
       autoSubmitReason: r.autoSubmitReason || null,
+      correctAnswers: Number(r.correctAnswers) || 0,
+      wrongAnswers: Number(r.wrongAnswers) || 0,
       answers: safeParseArray(r.answers),
       createdAt: r.createdAt || new Date().toISOString(),
     }));
@@ -302,6 +304,18 @@ function hydrateSheetsData(raw) {
       timestamp: v.timestamp || new Date().toISOString(),
     }));
   }
+
+  // Fallback: associate questions to assessments if empty (resolves Google Sheet sync bug)
+  db.assessments.forEach((a) => {
+    if (!a.questions || a.questions.length === 0) {
+      const qIds = db.questions
+        .filter((q) => String(q.assessment) === String(a._id))
+        .map((q) => q._id);
+      if (qIds.length > 0) {
+        a.questions = qIds;
+      }
+    }
+  });
 
   return db;
 }
@@ -383,7 +397,14 @@ class QueryChain {
         };
         const col = colMap[targetPath];
         if (col && result[targetPath]) {
-          result[targetPath] = resolve(result[targetPath], col) || result[targetPath];
+          const resolved = resolve(result[targetPath], col);
+          if (resolved && targetPath === 'assessment' && Array.isArray(resolved.questions)) {
+            // Automatically populate nested questions for assessment to support nested populate controller queries
+            resolved.questions = resolved.questions.map(
+              (qId) => resolve(qId, db.questions) || { _id: qId, toObject: () => ({ _id: qId }) }
+            );
+          }
+          result[targetPath] = resolved || result[targetPath];
         }
       }
 

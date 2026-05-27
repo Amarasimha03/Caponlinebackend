@@ -36,6 +36,7 @@ const monitoringRoutes = require('./routes/monitoring');
 const auditLogRoutes = require('./routes/auditLogs');
 const stateSyncRoutes = require('./routes/stateSync');
 const liveMonitoringRoutes = require('./routes/liveMonitoringRoutes');
+const examRoutes = require('./routes/examRoutes');
 
 const app = express();
 
@@ -104,6 +105,7 @@ app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/state', stateSyncRoutes);
 app.use('/api/live-monitoring', liveMonitoringRoutes);
+app.use('/api/exam', examRoutes);
 
 const { protect, adminOnly } = require('./middleware/auth');
 
@@ -168,18 +170,79 @@ app.post('/api/submit-exam', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Active exam result not found' });
     }
 
-    const assessment = await Assessment.findById(result.assessment);
+    const assessment = await Assessment.findById(result.assessment).populate('questions');
+    let totalScore = 0;
+    let correctAnswersCount = 0;
+    let wrongAnswersCount = 0;
+    let processedAnswers = [];
 
-    result.status = 'auto-submitted';
+    if (req.body.answers && Array.isArray(req.body.answers)) {
+      processedAnswers = req.body.answers.map(ans => {
+        const question = assessment.questions.find(q => q._id.toString() === ans.questionId);
+        if (!question) return ans;
+        let isCorrect = false;
+        let marksObtained = 0;
+        let correctAnswerText = '';
+        let selectedAnswerText = '';
+
+        const optionsText = question.options.map(o => o.text);
+        
+        if (question.type === 'mcq' || question.type === 'true-false') {
+          const correctIdx = question.options.findIndex(o => o.isCorrect);
+          isCorrect = ans.selectedOptions?.[0] === correctIdx;
+          if (isCorrect) marksObtained = question.marks;
+          correctAnswerText = question.options[correctIdx]?.text || '';
+          selectedAnswerText = (ans.selectedOptions && ans.selectedOptions.length > 0) ? question.options[ans.selectedOptions[0]]?.text : 'Not Attempted';
+        } else if (question.type === 'multiple-select') {
+          const correctIdxs = question.options.map((o, i) => o.isCorrect ? i : null).filter(i => i !== null);
+          isCorrect = JSON.stringify(ans.selectedOptions?.sort()) === JSON.stringify(correctIdxs.sort());
+          if (isCorrect) marksObtained = question.marks;
+          correctAnswerText = correctIdxs.map(i => question.options[i]?.text).join(', ');
+          selectedAnswerText = (ans.selectedOptions && ans.selectedOptions.length > 0) ? ans.selectedOptions.map(i => question.options[i]?.text).join(', ') : 'Not Attempted';
+        }
+
+        totalScore += marksObtained;
+        return { 
+          question: ans.questionId, 
+          questionText: question.title,
+          options: optionsText,
+          selectedOptions: ans.selectedOptions, 
+          selectedAnswer: selectedAnswerText,
+          correctAnswer: correctAnswerText,
+          isCorrect, 
+          marksObtained, 
+          timeTaken: ans.timeTaken || 0 
+        };
+      });
+
+      correctAnswersCount = processedAnswers.filter(a => a.isCorrect).length;
+      wrongAnswersCount = processedAnswers.length - correctAnswersCount;
+
+      result.answers = processedAnswers;
+      result.totalScore = totalScore;
+      result.percentage = result.totalMarks ? Math.round((totalScore / result.totalMarks) * 100) : 0;
+      result.passed = result.percentage >= (assessment ? assessment.passingScore : 60);
+      result.correctAnswers = correctAnswersCount;
+      result.wrongAnswers = wrongAnswersCount;
+    } else {
+      correctAnswersCount = result.answers ? result.answers.filter(a => a.isCorrect).length : 0;
+      wrongAnswersCount = result.answers ? (result.answers.length - correctAnswersCount) : 0;
+    }
+
+    // Determine if this is a user-initiated cancellation
+    const isUserCancelled = reason && reason.toLowerCase().includes('user cancelled');
+    
+    result.status = isUserCancelled ? 'cancelled' : 'auto-submitted';
     result.submittedAt = new Date();
     result.completionTime = Math.round((result.submittedAt - result.startedAt) / 60000);
     result.autoSubmitReason = reason || 'Camera Violations';
     await result.save();
 
-    const employee = await Employee.findById(result.employee);
+    // Update in-memory DB
+    const resIdx = IN_MEMORY_DB.results.findIndex(r => r._id.toString() === result._id.toString());
+    if (resIdx !== -1) IN_MEMORY_DB.results[resIdx] = result.toObject();
 
-    const correctAnswersCount = result.answers ? result.answers.filter(a => a.isCorrect).length : 0;
-    const wrongAnswersCount = result.answers ? (result.answers.length - correctAnswersCount) : 0;
+    const employee = await Employee.findById(result.employee);
 
     // Persist final result to Google Sheets
     persistEntity('submitResult', {
@@ -199,8 +262,9 @@ app.post('/api/submit-exam', protect, async (req, res) => {
       completionTime:  result.completionTime || 0,
       startedAt:       result.startedAt ? result.startedAt.toISOString() : '',
       submittedAt:     result.submittedAt ? result.submittedAt.toISOString() : '',
+      cancelTime:      isUserCancelled ? new Date().toISOString() : '',
       autoSubmitReason:result.autoSubmitReason || '',
-      submissionType:  'Automatic',
+      submissionType:  isUserCancelled ? 'User Cancelled' : 'Automatic',
       correctAnswers:  correctAnswersCount,
       wrongAnswers:    wrongAnswersCount,
       answers:         JSON.stringify(result.answers || []),
@@ -210,7 +274,7 @@ app.post('/api/submit-exam', protect, async (req, res) => {
     persistEntity('saveViolation', {
       employeeId:      employee ? (employee.employeeId || employee._id.toString()) : '',
       name:            employee ? employee.fullName : '',
-      warningCount:    result.violationCount || 4,
+      warningCount:    result.violationCount || (isUserCancelled ? 0 : 4),
       reason:          reason || 'Camera Violations',
     });
 
@@ -221,18 +285,24 @@ app.post('/api/submit-exam', protect, async (req, res) => {
         employeeId: result.employee.toString(),
         assessmentId: result.assessment.toString(),
         terminationReason: reason || 'Camera Violations',
+        status: result.status,
       });
     }
 
+    const auditAction = isUserCancelled ? 'exam-cancelled' : 'exam-auto-submitted';
+    const auditDesc = isUserCancelled
+      ? `Exam cancelled by user. Reason: ${reason}`
+      : `Exam auto-submitted due to: ${reason || 'Camera Violations'}`;
+
     await AuditLog.create({
       user: result.employee,
-      action: 'exam-auto-submitted',
-      description: `Exam auto-submitted due to: ${reason || 'Camera Violations'}`,
+      action: auditAction,
+      description: auditDesc,
       targetModel: 'Result',
       targetId: result._id,
     });
 
-    res.json({ success: true, message: 'Exam auto-submitted successfully' });
+    res.json({ success: true, message: isUserCancelled ? 'Exam cancelled successfully' : 'Exam auto-submitted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
