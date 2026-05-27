@@ -7,12 +7,13 @@ const express = require("express");
 const router = express.Router();
 const Result = require("../models/Result");
 const { protect, adminOnly } = require("../middleware/auth");
+const { apiCacheMiddleware } = require("../middleware/cache");
 
 // ─────────────────────────────────
 //  GET /api/exam/result/:resultId
 //  Fetch full result formatted for ResultPage.jsx
 // ─────────────────────────────────
-router.get("/result/:resultId", protect, async (req, res) => {
+router.get("/result/:resultId", protect, apiCacheMiddleware(), async (req, res) => {
   try {
     const result = await Result.findById(req.params.resultId)
       .populate("employee", "fullName email department")
@@ -96,7 +97,7 @@ router.get("/result/:resultId", protect, async (req, res) => {
 //  GET /api/exam/results
 //  List all results mapped for ResultPage
 // ─────────────────────────────────
-router.get("/results", protect, async (req, res) => {
+router.get("/results", protect, apiCacheMiddleware(), async (req, res) => {
   try {
     const filter = {};
     if (req.query.examId) filter.assessment = req.query.examId;

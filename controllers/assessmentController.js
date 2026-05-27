@@ -207,7 +207,24 @@ exports.updateAssessment = async (req, res) => {
 exports.deleteAssessment = async (req, res) => {
   try {
     const assessment = await Assessment.findByIdAndDelete(req.params.id);
+    
+    // Cascading delete associated questions
+    const questions = await Question.find({ assessment: req.params.id });
     await Question.deleteMany({ assessment: req.params.id });
+    for (const q of questions) {
+      persistEntity('deleteEntity', { sheetName: 'questions', _id: q._id.toString() }).catch(()=>{});
+    }
+
+    // Cascading delete associated results
+    const results = await Result.find({ assessment: req.params.id });
+    await Result.deleteMany({ assessment: req.params.id });
+    for (const r of results) {
+      persistEntity('deleteEntity', { sheetName: 'results', _id: r._id.toString() }).catch(()=>{});
+    }
+
+    // Cascading delete associated violations
+    await Violation.deleteMany({ assessment: req.params.id });
+
     // Remove from in-memory DB
     if (IN_MEMORY_DB.assessments) {
       IN_MEMORY_DB.assessments = IN_MEMORY_DB.assessments.filter(a => a._id.toString() !== req.params.id);
@@ -221,7 +238,7 @@ exports.deleteAssessment = async (req, res) => {
         targetModel: 'Assessment', targetId: req.params.id,
       });
     }
-    res.json({ success: true, message: 'Assessment and its questions deleted' });
+    res.json({ success: true, message: 'Assessment and all related records deleted successfully' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
 

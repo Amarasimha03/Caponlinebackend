@@ -6,13 +6,14 @@ const {
   createAssessment, updateAssessment, deleteAssessment,
   startExam, submitExam, getDashboardStats, bulkAssignExam
 } = require('../controllers/assessmentController');
+const { apiCacheMiddleware } = require('../middleware/cache');
 
 router.use(protect);
-router.get('/stats', adminOnly, getDashboardStats);
-router.get('/my', getMyAssessments);
-router.get('/', adminOnly, getAssessments);
+router.get('/stats', adminOnly, apiCacheMiddleware(), getDashboardStats);
+router.get('/my', apiCacheMiddleware(), getMyAssessments);
+router.get('/', adminOnly, apiCacheMiddleware(), getAssessments);
 router.post('/', adminOnly, createAssessment);
-router.get('/:id', getAssessment);
+router.get('/:id', apiCacheMiddleware(), getAssessment);
 router.put('/:id', adminOnly, updateAssessment);
 router.delete('/:id', adminOnly, deleteAssessment);
 router.post('/start', startExam);

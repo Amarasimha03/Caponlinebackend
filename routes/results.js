@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { protect, adminOnly } = require('../middleware/auth');
-const { getResults, getResult, getRankList, getAnalytics } = require('../controllers/resultController');
+const { getResults, getResult, getRankList, getAnalytics, deleteResult } = require('../controllers/resultController');
+const { apiCacheMiddleware } = require('../middleware/cache');
 
 router.use(protect);
-router.get('/analytics', adminOnly, getAnalytics);
-router.get('/rank/:assessmentId', getRankList);
-router.get('/', getResults);
-router.get('/:id', getResult);
+router.get('/analytics', adminOnly, apiCacheMiddleware(), getAnalytics);
+router.get('/rank/:assessmentId', apiCacheMiddleware(), getRankList);
+router.get('/', apiCacheMiddleware(), getResults);
+router.get('/:id', apiCacheMiddleware(), getResult);
+router.delete('/:id', adminOnly, deleteResult);
 
 module.exports = router;

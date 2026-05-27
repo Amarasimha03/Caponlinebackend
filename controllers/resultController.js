@@ -1,6 +1,8 @@
 const Result = require('../models/Result');
 const Assessment = require('../models/Assessment');
 const Violation = require('../models/Violation');
+const AuditLog = require('../models/AuditLog');
+const { persistEntity } = require('../utils/localCache');
 
 exports.getResults = async (req, res) => {
   try {
@@ -97,5 +99,21 @@ exports.getAnalytics = async (req, res) => {
         totalViolations,
       }
     });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+exports.deleteResult = async (req, res) => {
+  try {
+    const result = await Result.findByIdAndDelete(req.params.id);
+    if (result) {
+      persistEntity('deleteEntity', { sheetName: 'results', _id: req.params.id }).catch(()=>{});
+
+      await AuditLog.create({
+        user: req.user._id, action: 'result-deleted',
+        description: `Result deleted for employee: ${result.employeeName || 'unknown'} (score: ${result.percentage}%)`,
+        targetModel: 'Result', targetId: req.params.id,
+      });
+    }
+    res.json({ success: true, message: 'Result deleted successfully' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
