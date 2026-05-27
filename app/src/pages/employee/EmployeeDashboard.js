@@ -50,6 +50,12 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     load();
 
+    // Set polling interval to refresh assessments every 30 seconds
+    const intervalId = setInterval(() => {
+      console.log('[Dashboard] Polling fresh assessments from server...');
+      load(true);
+    }, 30000);
+
     if (user?._id) {
       // Join user specific room to receive real-time updates
       socket.emit('exam:start', { employeeId: user._id, employeeName: user.fullName, examId: 'dashboard' });
@@ -70,10 +76,13 @@ export default function EmployeeDashboard() {
       socket.on('reconnect', handleReconnect);
 
       return () => {
+        clearInterval(intervalId);
         socket.off(`notification:${user._id}`, handleNotification);
         socket.off('reconnect', handleReconnect);
       };
     }
+
+    return () => clearInterval(intervalId);
   }, [user?._id, user?.fullName, load]);
 
   // Filter out invalid assessments (no _id = orphaned reference)
