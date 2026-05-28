@@ -748,6 +748,12 @@ export default function ExamPage() {
 
   const submitExamAutomatically = async (reason = "Camera Violations") => {
     if (submittingRef.current) return;
+    
+    if (!user?._id || !assessmentId || !resultId) {
+      console.log("Missing submit data:", { employeeId: user?._id, assessmentId, resultId });
+      return;
+    }
+    
     submittingRef.current = true;
     
     try {

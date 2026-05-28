@@ -162,6 +162,9 @@ app.get('/api/db-status', protect, adminOnly, (req, res) => {
 
 app.post('/api/submit-exam', protect, async (req, res) => {
   try {
+    console.log("========== SUBMIT EXAM ==========");
+    console.log("BODY:", req.body);
+    
     const { employeeId, reason, resultId } = req.body;
     const Result = require('./models/Result');
     const Employee = require('./models/Employee');
