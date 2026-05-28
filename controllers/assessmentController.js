@@ -322,6 +322,9 @@ exports.startExam = async (req, res) => {
 // POST submit exam
 exports.submitExam = async (req, res) => {
   try {
+    console.log("========== ASSESSMENTS/SUBMIT ==========");
+    console.log("BODY:", req.body);
+    
     const { resultId, answers } = req.body;
     const result = await Result.findById(resultId);
     if (!result) return res.status(404).json({ success: false, message: 'Result not found' });

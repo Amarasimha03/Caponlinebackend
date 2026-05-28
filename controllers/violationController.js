@@ -6,6 +6,9 @@ const { persistEntity } = require('../utils/localCache');
 
 exports.logViolation = async (req, res) => {
   try {
+    console.log("========== VIOLATIONS LOG ==========");
+    console.log("BODY:", req.body);
+    
     const { assessmentId, resultId, type, description, severity } = req.body;
     const violation = await Violation.create({
       employee: req.user._id,
