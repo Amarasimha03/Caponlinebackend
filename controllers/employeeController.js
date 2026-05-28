@@ -156,8 +156,18 @@ exports.updateEmployee = async (req, res) => {
 exports.deleteEmployee = async (req, res) => {
   const id = req.params.id;
   try {
+    console.log("========== DELETE REQUEST ==========");
+    console.log("EMPLOYEE ID:", String(id));
+    
     // Step 1 (CRITICAL): Delete the employee — if this fails, return 500
     const employee = await Employee.findByIdAndDelete(id);
+    
+    if (!employee) {
+      console.log("EMPLOYEE NOT FOUND IN DB");
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+    
+    console.log("DELETED EMPLOYEE:", employee.fullName || employee.email || employee._id);
 
     if (employee) {
       // Step 2 (non-critical): Delete associated exam results
