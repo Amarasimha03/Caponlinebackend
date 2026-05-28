@@ -26,7 +26,7 @@ router.get('/', protect, async (req, res) => {
         webrtcConnected: false,
         socketId: activeSockets.get(empId) || '',
       };
-    });
+    }).filter(exam => exam.socketId !== ''); // Only show if they are currently connected
 
     res.json(activeExams);
   } catch (err) {

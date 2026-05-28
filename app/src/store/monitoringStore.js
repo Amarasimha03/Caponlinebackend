@@ -199,10 +199,13 @@ const useMonitoringStore = create((set, get) => ({
     });
 
     socket.on('exam:employee-disconnected', (data) => {
+      console.log(`[MonitoringStore] Employee disconnected: ${data.employeeId}`);
+      if (peerConnections[data.employeeId]) {
+        peerConnections[data.employeeId].close();
+        delete peerConnections[data.employeeId];
+      }
       set((state) => ({
-        activeExams: state.activeExams.map((e) =>
-          e.socketId === data.socketId ? { ...e, webrtcConnected: false } : e
-        ),
+        activeExams: state.activeExams.filter((e) => e.employeeId !== data.employeeId),
       }));
     });
 
