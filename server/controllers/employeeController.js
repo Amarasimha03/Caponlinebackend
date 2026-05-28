@@ -211,7 +211,7 @@ exports.deleteEmployee = async (req, res) => {
     res.json({ success: true, message: 'Employee and all related records deleted' });
   } catch (err) {
     console.error('[deleteEmployee] CRITICAL ERROR:', err.message, err.stack);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message, error: err.message, stack: err.stack });
   }
 };
 
