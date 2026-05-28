@@ -744,7 +744,12 @@ export default function ExamPage() {
     }
   };
 
+  const submittingRef = useRef(false);
+
   const submitExamAutomatically = async (reason = "Camera Violations") => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    
     try {
       // 1. Stop exam timer and monitoring intervals
       if (timerRef.current) clearInterval(timerRef.current);
