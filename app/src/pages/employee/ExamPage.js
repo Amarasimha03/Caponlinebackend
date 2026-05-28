@@ -242,12 +242,28 @@ export default function ExamPage() {
         peerConnectionRef.current = null;
       }
       socketRef.current?.emit('exam:submit', { employeeId: user?._id, assessmentId });
+      
+      // Disconnect socket immediately so the server removes them from active feeds
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     } catch (err) {
       console.warn("Cleanup media streams error:", err);
     }
   }, [assessmentId, user?._id]);
 
-  // Setup webcam (camera only — screen sharing is requested at exam start)
+  // Handle browser close/refresh to ensure streams and sockets are immediately stopped
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      cleanupMediaStreams();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [cleanupMediaStreams]);
+
+
   const startWebcam = async () => {
     // Prevent duplicate requests
     if (cameraRequestingRef.current) return;

@@ -59,8 +59,10 @@ export default function EmployeeDashboard() {
     }, 30000);
 
     if (user?._id) {
-      // Join user specific room to receive real-time updates
-      socket.emit('exam:start', { employeeId: user._id, employeeName: user.fullName, examId: 'dashboard' });
+      // Ensure socket is connected if it was disconnected during exam cleanup
+      if (!socket.connected) socket.connect();
+      // Join user specific room to receive real-time updates (like new exam assignments)
+      socket.emit('employee:join-room', { employeeId: user._id });
 
       // New exam assigned notification
       const handleNotification = (notif) => {
