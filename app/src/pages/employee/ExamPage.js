@@ -86,7 +86,7 @@ export default function ExamPage() {
           String(a.title || '').localeCompare(String(b.title || ''), undefined, { numeric: true, sensitivity: 'base' })
         );
         setQuestions(sortedQ);
-        setMaxViolations(data.assessment.maxViolations || 3);
+        setMaxViolations(3); // Force 3 max violations as requested
         setTimer((data.assessment.duration || 30) * 60);
 
         // ── Restore from localStorage first (instant, no network) ──
