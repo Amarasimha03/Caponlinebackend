@@ -4,26 +4,7 @@ const violationSchema = new mongoose.Schema({
   employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
   assessment: { type: mongoose.Schema.Types.ObjectId, ref: 'Assessment', required: true },
   result: { type: mongoose.Schema.Types.ObjectId, ref: 'Result' },
-  type: {
-    type: String,
-    enum: [
-      'tab-switch',
-      'window-minimize',
-      'fullscreen-exit',
-      'focus-loss',
-      'right-click',
-      'copy-paste',
-      'multiple-faces',
-      'multiple-persons',
-      'no-face',
-      'screen-share',
-      'devtools',
-      'idle',
-      'audio-noise',
-      'other'
-    ],
-    required: true
-  },
+  type: { type: String, required: true },
   description: { type: String },
   screenshot: { type: String },
   timestamp: { type: Date, default: Date.now },
