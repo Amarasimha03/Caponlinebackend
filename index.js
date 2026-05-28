@@ -377,6 +377,11 @@ io.on('connection', (socket) => {
     io.emit('webrtc:request-renegotiate');
   });
 
+  // Employee joins room for dashboard notifications without marking them as "in exam"
+  socket.on('employee:join-room', (data) => {
+    socket.join(`exam-${data.employeeId}`);
+  });
+
   // Employee joins exam and notifies admin
   socket.on('exam:start', (data) => {
     const { employeeId, employeeName, examId } = data;
