@@ -10,10 +10,16 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
 
   useEffect(() => {
     if (cameraRef.current && candidate.cameraStream) {
-      cameraRef.current.srcObject = candidate.cameraStream;
+      if (cameraRef.current.srcObject !== candidate.cameraStream) {
+        cameraRef.current.srcObject = candidate.cameraStream;
+        cameraRef.current.play().catch(e => console.warn("Card camera play error:", e));
+      }
     }
     if (screenRef.current && candidate.screenStream) {
-      screenRef.current.srcObject = candidate.screenStream;
+      if (screenRef.current.srcObject !== candidate.screenStream) {
+        screenRef.current.srcObject = candidate.screenStream;
+        screenRef.current.play().catch(e => console.warn("Card screen play error:", e));
+      }
     }
   }, [candidate.cameraStream, candidate.screenStream]);
 
@@ -120,10 +126,16 @@ export default function AdminMonitoring() {
       const currentCandidate = activeExams.find(e => e.employeeId === selectedCandidate.employeeId);
       if (currentCandidate) {
         if (selectedCameraRef.current && currentCandidate.cameraStream) {
-          selectedCameraRef.current.srcObject = currentCandidate.cameraStream;
+          if (selectedCameraRef.current.srcObject !== currentCandidate.cameraStream) {
+            selectedCameraRef.current.srcObject = currentCandidate.cameraStream;
+            selectedCameraRef.current.play().catch(e => console.warn("Camera play error:", e));
+          }
         }
         if (selectedScreenRef.current && currentCandidate.screenStream) {
-          selectedScreenRef.current.srcObject = currentCandidate.screenStream;
+          if (selectedScreenRef.current.srcObject !== currentCandidate.screenStream) {
+            selectedScreenRef.current.srcObject = currentCandidate.screenStream;
+            selectedScreenRef.current.play().catch(e => console.warn("Screen play error:", e));
+          }
         }
       }
     }
