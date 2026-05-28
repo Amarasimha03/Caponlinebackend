@@ -535,7 +535,7 @@ class MockModel {
   async save() {
     const colName = this.constructor.name;
     const col = MockModel.getCollection(colName);
-    const idx = col.findIndex((x) => x._id.toString() === this._id.toString());
+    const idx = col.findIndex((x) => String(x._id) === String(this._id));
 
     if (!this.createdAt) this.createdAt = new Date().toISOString();
     this.updatedAt = new Date().toISOString();
@@ -572,7 +572,7 @@ class MockModel {
   static findById(id) {
     if (!id) return new QueryChain(null);
     const list = MockModel.getCollection(this.name);
-    const found = list.find((item) => item._id.toString() === id.toString());
+    const found = list.find((item) => String(item._id) === String(id));
     return new QueryChain(found ? new this(found) : null);
   }
 
@@ -594,7 +594,7 @@ class MockModel {
 
   static async findByIdAndUpdate(id, update, options = {}) {
     const list = MockModel.getCollection(this.name);
-    const idx = list.findIndex((item) => item._id.toString() === id.toString());
+    const idx = list.findIndex((item) => String(item._id) === String(id));
     if (idx === -1) return null;
 
     let item = { ...list[idx] };
