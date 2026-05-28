@@ -1,24 +1,8 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL =
-  process.env.REACT_APP_SOCKET_URL ||
-  'https://testbackend-j6dn.onrender.com';
-
-// Create ONE global socket instance — never inside components
-const socket = io(SOCKET_URL, {
-  autoConnect:          false,              // connect only when token confirmed present
-  transports:           ['polling', 'websocket'], // polling FIRST — fixes Render transport close
-  upgrade:              true,              // upgrade to websocket after polling handshake
-  reconnection:         true,
-  reconnectionAttempts: Infinity,
-  reconnectionDelay:    2000,
-  reconnectionDelayMax: 10000,
-  timeout:              20000,
-  auth: (cb) => {
-    // Called fresh on every connection and reconnection attempt
-    const token = localStorage.getItem('token');
-    cb({ token: token ? `Bearer ${token}` : '' });
-  },
+const socket = io(import.meta.env.VITE_SOCKET_URL, {
+    transports: ["websocket"],
+    withCredentials: true
 });
 
 let heartbeatInterval = null;
