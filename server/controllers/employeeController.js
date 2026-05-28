@@ -2,6 +2,7 @@ const Employee = require('../models/Employee');
 const Assessment = require('../models/Assessment');
 const Result = require('../models/Result');
 const AuditLog = require('../models/AuditLog');
+const Violation = require('../models/Violation');
 const { persistEntity } = require('../utils/localCache');
 
 // GET all employees (admin)

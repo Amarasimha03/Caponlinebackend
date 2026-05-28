@@ -3,6 +3,7 @@ const Question = require('../models/Question');
 const Result = require('../models/Result');
 const Employee = require('../models/Employee');
 const AuditLog = require('../models/AuditLog');
+const Violation = require('../models/Violation');
 const { persistEntity, IN_MEMORY_DB } = require('../utils/localCache');
 
 // GET all assessments (admin)

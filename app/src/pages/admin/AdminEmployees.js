@@ -351,7 +351,7 @@ export default function AdminEmployees() {
             </thead>
             <tbody>
               {filtered.map((emp, i) => (
-                <motion.tr key={emp._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
+                <motion.tr key={`${emp._id}-${i}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div className="avatar">{(emp.fullName || '?')[0].toUpperCase()}</div>
