@@ -177,7 +177,10 @@ export default function ExamPage() {
   // Re-bind webcam stream to the newly mounted video element when entering the exam phase
   useEffect(() => {
     if (phase === 'exam' && streamRef.current && videoRef.current) {
-      videoRef.current.srcObject = streamRef.current;
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      videoRef.current.play().catch(e => console.warn('Exam phase video play failed:', e));
     }
     // Auto-start webcam if we restored into exam phase and don't have it
     if (phase === 'exam' && !webcamReady && !streamRef.current) {
