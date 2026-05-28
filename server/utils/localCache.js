@@ -636,8 +636,9 @@ class MockModel {
   }
 
   static async findByIdAndDelete(id) {
+    if (!id) return null;
     const list = MockModel.getCollection(this.name);
-    const idx = list.findIndex((item) => item._id.toString() === id.toString());
+    const idx = list.findIndex((item) => String(item._id) === String(id));
     if (idx === -1) return null;
     const deleted = list.splice(idx, 1)[0];
     MockModel.saveCollection(this.name, list);
