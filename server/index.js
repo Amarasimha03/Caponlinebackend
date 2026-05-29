@@ -10,7 +10,7 @@ process.on("unhandledRejection", (err) => {
   console.error("UNHANDLED REJECTION:", err);
 });
 
-const GOOGLE_SHEET_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbxUVUnaXv_aOcxT9m__tsqAlpMaLKtwmvVXhfUiRgoJ7hFGv3EFVWFF3r7dPRYZJuJa-A/exec';
+const GOOGLE_SHEET_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbwubVCSsc4VRIHfbPV2GcRCdT-M_100w2gdQZ8x1OaOhjN3oNJV39dNejxTVjfVxk1ANw/exec';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'onlinetest_jwt_secret_2024_secure_key';
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 process.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
