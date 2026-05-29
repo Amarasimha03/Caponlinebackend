@@ -51,6 +51,18 @@ const sheetsWebhookRoutes = require('./routes/sheetsWebhook');
 
 const app = express();
 const compression = require('compression');
+
+// ── Intercept ALL OPTIONS preflight BEFORE compression / anything else ──
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  return res.sendStatus(204);
+});
+
 app.use(compression());
 
 // ── CORS: Bulletproof — allow any origin, handle OPTIONS preflight ──────────────
@@ -601,9 +613,29 @@ async function startServer() {
     }
   });
 
+  // ── Health check — Render & uptime monitors hit this to confirm server is alive ──
+  app.get('/', (req, res) => {
+    res.json({ status: 'ok', message: 'CAP Online Test Backend is running', timestamp: new Date().toISOString() });
+  });
+
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+  });
+
   const PORT = process.env.PORT || 5000;
   server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
+
+    // ── Keep-alive: self-ping every 14 min to prevent Render free tier sleep ──
+    const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    setInterval(async () => {
+      try {
+        await fetch(`${SELF_URL}/health`);
+        console.log('💓 Keep-alive ping sent');
+      } catch (e) {
+        console.warn('Keep-alive ping failed:', e.message);
+      }
+    }, 14 * 60 * 1000); // every 14 minutes
   });
 }
 
