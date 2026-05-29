@@ -34,7 +34,7 @@ export function useViolations({ phase, user, assessmentId, resultId, violations,
       
       return newCount;
     });
-  }, [user, assessmentId, resultId, maxViolations, socketRef, onTerminate]);
+  }, [user, assessmentId, resultId, maxViolations, socketRef, onTerminate, setViolations]);
 
   useEffect(() => {
     if (phase !== 'exam') return;
