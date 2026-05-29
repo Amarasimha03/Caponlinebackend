@@ -54,9 +54,11 @@ const compression = require('compression');
 app.use(compression());
 
 app.use(cors({
-  origin: function (origin, callback) {
-    callback(null, true);
-  },
+  origin: [
+    process.env.CLIENT_URL || "http://localhost:3001",
+    "http://localhost:3000",
+    "https://caponlinetest.onrender.com"
+  ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"]
 }));
