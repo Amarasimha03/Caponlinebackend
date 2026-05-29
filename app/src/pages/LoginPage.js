@@ -132,7 +132,7 @@ export default function LoginPage() {
         }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 40 }}>
-            <img src="/logo.svg" alt="Cabptoid SOLUTIONS Logo" style={{ height: 54, objectFit: 'contain' }} />
+            <img src="/logo.svg" alt="Cabptoid SOLUTIONS Logo" style={{ height: 68, objectFit: 'contain' }} />
           </div>
 
           <form onSubmit={handleSubmit} autoComplete="off">
