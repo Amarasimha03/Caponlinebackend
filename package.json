@@ -8,7 +8,6 @@
   },
   "scripts": {
     "build": "cd app && npm install && npm run build",
-    "postbuild": "node copy-build.js",
     "start": "node index.js",
     "dev": "node index.js",
     "sync": "node git-sync.js"
