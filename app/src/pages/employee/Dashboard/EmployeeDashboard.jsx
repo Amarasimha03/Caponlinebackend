@@ -135,12 +135,7 @@ export default function EmployeeDashboard() {
         position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(20px)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LayoutDashboard size={20} color="#fff" />
-          </div>
-          <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Employee<span style={{ color: 'var(--primary)' }}>Portal</span>
-          </span>
+          <img src="/logo.svg" alt="CABPTOID SOLUTIONS Logo" style={{ height: 32, objectFit: 'contain' }} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>

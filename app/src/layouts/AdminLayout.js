@@ -58,21 +58,9 @@ export default function AdminLayout() {
         padding: collapsed ? '20px 12px' : '20px 24px',
         borderBottom: '1px solid var(--border-light)',
         display: 'flex', alignItems: 'center', gap: 12,
-        justifyContent: collapsed ? 'center' : 'flex-start',
+        justifyContent: 'center',
       }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 10,
-          background: 'var(--gradient-primary)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Shield size={22} color="#fff" />
-        </div>
-        {!collapsed && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>AssessHub</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Admin Panel</div>
-          </motion.div>
-        )}
+        <img src="/logo.svg" alt="CABPTOID SOLUTIONS Logo" style={{ height: collapsed ? 24 : 32, maxWidth: '100%', objectFit: 'contain' }} />
       </div>
 
       {/* Nav */}
