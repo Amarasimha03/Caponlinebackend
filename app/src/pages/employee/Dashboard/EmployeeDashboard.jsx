@@ -24,7 +24,7 @@ export default function EmployeeDashboard() {
       if (!cached) return [];
       const timestamp = localStorage.getItem(LS_ASSESSMENTS_TIMESTAMP);
       const age = timestamp ? Date.now() - parseInt(timestamp) : Infinity;
-      if (age > 120000) {
+      if (age > 30000) { // ✅ 30 seconds — was 120s, prevents stale cache hiding new assessments
         localStorage.removeItem(LS_ASSESSMENTS_KEY);
         localStorage.removeItem(LS_ASSESSMENTS_TIMESTAMP);
         return [];
@@ -99,7 +99,10 @@ export default function EmployeeDashboard() {
     }
 
     socket.on('db:sync', () => {
-      console.log('📡 Real-time sync signal received by employee: updating exam list');
+      console.log('📡 Real-time sync signal received — clearing cache and refreshing exam list');
+      // ✅ Clear localStorage cache immediately so fresh data is always fetched, not stale cache
+      localStorage.removeItem(LS_ASSESSMENTS_KEY);
+      localStorage.removeItem(LS_ASSESSMENTS_TIMESTAMP);
       load(true);
     });
 
