@@ -57,6 +57,7 @@ app.use(cors({
   origin: [
       process.env.CLIENT_URL || "https://onlinetest-vpb4.onrender.com",
       "https://onlinetest-esyq.onrender.com",
+      "https://caponlinetest.onrender.com",
       "http://localhost:3001",
       "http://localhost:3000"
   ],
