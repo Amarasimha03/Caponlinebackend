@@ -6,10 +6,6 @@ services:
     buildCommand: npm run build
     publishDir: app/build
     routes:
-      # API calls go to backend (not needed for static hosting but documented)
-      - type: rewrite
-        source: /api/*
-        destination: https://testbackend-a1nl.onrender.com/api/:splat
       # ALL other routes (including /login, /dashboard etc.) → index.html
       - type: rewrite
         source: /*
