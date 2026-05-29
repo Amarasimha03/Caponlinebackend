@@ -2,6 +2,7 @@ services:
   - type: web
     name: online-exam-app
     env: static
+    autoDeployTrigger: commit
     buildCommand: npm run build
     publishDir: build
     routes:
