@@ -111,7 +111,7 @@ exports.getRankList = async (req, res) => {
     const resRes = await querySheets('getResults');
     let results = (resRes.data || []).filter(r => 
       String(r.assessmentId || r.assessment) === String(assessmentId) &&
-      ['submitted', 'auto-submitted'].includes(r.status)
+      ['submitted', 'auto-submitted', 'completed'].includes(r.status)
     );
     
     const empRes = await querySheets('getEmployees');
@@ -138,7 +138,7 @@ exports.getRankList = async (req, res) => {
 exports.getAnalytics = async (req, res) => {
   try {
     const resRes = await querySheets('getResults');
-    const allResults = (resRes.data || []).filter(r => ['submitted', 'auto-submitted'].includes(r.status));
+    const allResults = (resRes.data || []).filter(r => ['submitted', 'auto-submitted', 'completed'].includes(r.status));
     
     const totalResults = allResults.length;
     const passedResults = allResults.filter(r => r.passed === true || r.passed === 'true').length;

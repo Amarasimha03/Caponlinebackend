@@ -292,7 +292,7 @@ exports.getDashboardStats = async (req, res) => {
     const totalEmployees = (empRes.data || []).filter(e => e.role === 'employee').length;
 
     const resRes = await querySheets('getResults');
-    const totalExamsTaken = (resRes.data || []).filter(r => ['submitted', 'auto-submitted'].includes(r.status)).length;
+    const totalExamsTaken = (resRes.data || []).filter(r => ['submitted', 'auto-submitted', 'completed'].includes(r.status)).length;
 
     const vRes = await querySheets('getViolations');
     const violationsLogged = (vRes.data || []).length;
