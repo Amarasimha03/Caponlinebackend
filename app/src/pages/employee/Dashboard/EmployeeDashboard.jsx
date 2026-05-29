@@ -64,13 +64,16 @@ export default function EmployeeDashboard() {
       localStorage.setItem(LS_ASSESSMENTS_TIMESTAMP, Date.now().toString());
 
       const notifs = [];
-      const now = new Date();
       sorted.forEach(a => {
         if (!a.result && a.createdAt) {
-          const daysOld = (now - new Date(a.createdAt)) / (1000 * 60 * 60 * 24);
-          if (daysOld < 3) {
-            notifs.push({ id: a._id, message: `New assessment assigned: ${a.title}`, time: new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), unread: true });
-          }
+          const dateObj = new Date(a.createdAt);
+          const timeStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          notifs.push({
+            id: a._id,
+            message: `New assessment assigned: ${a.title}`,
+            time: timeStr,
+            unread: true
+          });
         }
       });
       setNotifications(notifs);
@@ -197,7 +200,13 @@ export default function EmployeeDashboard() {
                       <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No new notifications</div>
                     ) : (
                       notifications.map((n, i) => (
-                        <div key={i} style={{ padding: '12px 16px', borderRadius: 8, transition: 'background 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <div 
+                          key={i} 
+                          onClick={() => { navigate(`/exam/${n.id}`); setShowNotif(false); }}
+                          style={{ padding: '12px 16px', borderRadius: 8, transition: 'background 0.2s', cursor: 'pointer' }} 
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} 
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
                           <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 4, fontWeight: 500 }}>{n.message}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{n.time}</div>
                         </div>
