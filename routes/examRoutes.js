@@ -6,18 +6,22 @@ const { querySheets } = require("../services/googleSheets");
 
 router.get("/result/:resultId", protect, apiCacheMiddleware(), async (req, res) => {
   try {
-    const resRes = await querySheets('getResults');
+    // Fetch all datasets in parallel to eliminate sequential timeout delays
+    const [resRes, empRes, assRes, qRes] = await Promise.all([
+      querySheets('getResults'),
+      querySheets('getEmployees'),
+      querySheets('getAssessments'),
+      querySheets('getQuestions')
+    ]);
+
     const result = (resRes.data || []).find(r => String(r._id || r.id) === String(req.params.resultId));
     if (!result) return res.status(404).json({ error: "Result not found" });
 
-    const empRes = await querySheets('getEmployees');
     const e = (empRes.data || []).find(e => String(e._id || e.id) === String(result.employee));
     result.employee = e || result.employee;
 
-    const assRes = await querySheets('getAssessments');
     const a = (assRes.data || []).find(a => String(a._id || a.id) === String(result.assessment));
     if (a) {
-      const qRes = await querySheets('getQuestions');
       const assessmentId = a._id || a.id;
       const questions = (qRes.data || []).filter(q => String(q.assessment) === String(assessmentId) || String(q.assessmentId) === String(assessmentId));
       a.questions = questions;
@@ -107,17 +111,20 @@ router.get("/result/:resultId", protect, apiCacheMiddleware(), async (req, res) 
 
 router.get("/results", protect, apiCacheMiddleware(), async (req, res) => {
   try {
-    const resRes = await querySheets('getResults');
+    // Fetch all required sheets in parallel to eliminate timeout latencies
+    const [resRes, empRes, assRes] = await Promise.all([
+      querySheets('getResults'),
+      querySheets('getEmployees'),
+      querySheets('getAssessments')
+    ]);
+
     let results = resRes.data || [];
+    const employees = empRes.data || [];
+    const assessments = assRes.data || [];
     
     if (req.query.examId) results = results.filter(r => String(r.assessment) === String(req.query.examId));
     if (req.query.employeeId) results = results.filter(r => String(r.employee) === String(req.query.employeeId));
     if (req.user.role === 'employee') results = results.filter(r => String(r.employee) === String(req.user._id));
-
-    const empRes = await querySheets('getEmployees');
-    const employees = empRes.data || [];
-    const assRes = await querySheets('getAssessments');
-    const assessments = assRes.data || [];
 
     const mapped = results.map(r => {
       const e = employees.find(e => String(e._id) === String(r.employee));

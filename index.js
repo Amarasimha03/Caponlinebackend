@@ -167,7 +167,14 @@ async function startServer() {
       const { employeeId, reason, resultId, autoSubmit } = req.body;
       const { querySheets } = require('./services/googleSheets');
 
-      const resRes = await querySheets('getResults');
+      // Fetch all required sheets data in parallel to avoid sequential request accumulation timeouts
+      const [resRes, assRes, qRes, empRes] = await Promise.all([
+        querySheets('getResults'),
+        querySheets('getAssessments'),
+        querySheets('getQuestions'),
+        querySheets('getEmployees')
+      ]);
+
       const results = resRes.data || [];
 
       let result;
@@ -181,13 +188,11 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'Active exam result not found' });
       }
 
-      const assRes = await querySheets('getAssessments');
       const assessment = (assRes.data || []).find(a => String(a._id || a.id) === String(result.assessmentId || result.assessment));
 
       let questions = [];
       if (assessment) {
         const assessmentId = assessment._id || assessment.id;
-        const qRes = await querySheets('getQuestions', { assessmentId });
         const rawQuestions = (qRes.data || []).filter(q => String(q.assessment) === String(assessmentId) || String(q.assessmentId) === String(assessmentId));
         questions = rawQuestions.map(q => {
           if (typeof q.options === 'string') {
@@ -304,47 +309,47 @@ async function startServer() {
       result.completionTime = Math.round((new Date(result.submittedAt) - new Date(result.startedAt || 0)) / 60000);
       result.autoSubmitReason = reason || (autoSubmit ? 'Camera Violations' : 'Manual Submission');
 
-      const empRes = await querySheets('getEmployees');
       const empId = result.employeeMongoId || result.employeeId || req.user._id;
       const employee = (empRes.data || []).find(e => String(e._id) === String(empId));
 
-      await querySheets('submitResult', {
-        _id: result._id,
-        employeeId: employee ? (employee.employeeId || employee._id.toString()) : '',
-        employeeMongoId: empId.toString(),
-        employee: empId.toString(),
-        employeeName: employee ? employee.fullName : '',
-        employeeEmail: employee ? employee.email : '',
-        assessmentId: (result.assessmentId || result.assessment || assessment?._id || '').toString(),
-        assessment: (result.assessmentId || result.assessment || assessment?._id || '').toString(),
-        assessmentTitle: assessment ? assessment.title : 'Exam',
-        totalScore: result.totalScore,
-        totalMarks: result.totalMarks,
-        percentage: result.percentage,
-        passed: result.passed,
-        status: result.status,
-        violationCount: result.violationCount || 0,
-        completionTime: result.completionTime || 0,
-        startedAt: result.startedAt || '',
-        submittedAt: result.submittedAt || '',
-        examStarted: true,
-        examCompleted: true,
-        startTime: result.startTime || result.startedAt || '',
-        endTime: result.endTime || result.submittedAt || '',
-        cancelTime: isUserCancelled ? new Date().toISOString() : '',
-        autoSubmitReason: result.autoSubmitReason || '',
-        submissionType: isUserCancelled ? 'User Cancelled' : 'Submitted',
-        correctAnswers: correctAnswersCount,
-        wrongAnswers: wrongAnswersCount,
-        answers: JSON.stringify(result.answers || []),
-      });
-
-      await querySheets('saveViolation', {
-        employeeId: employee ? (employee.employeeId || employee._id.toString()) : '',
-        name: employee ? employee.fullName : '',
-        warningCount: result.violationCount || (isUserCancelled ? 0 : 4),
-        reason: reason || 'Camera Violations',
-      });
+      await Promise.all([
+        querySheets('submitResult', {
+          _id: result._id,
+          employeeId: employee ? (employee.employeeId || employee._id.toString()) : '',
+          employeeMongoId: empId.toString(),
+          employee: empId.toString(),
+          employeeName: employee ? employee.fullName : '',
+          employeeEmail: employee ? employee.email : '',
+          assessmentId: (result.assessmentId || result.assessment || assessment?._id || '').toString(),
+          assessment: (result.assessmentId || result.assessment || assessment?._id || '').toString(),
+          assessmentTitle: assessment ? assessment.title : 'Exam',
+          totalScore: result.totalScore,
+          totalMarks: result.totalMarks,
+          percentage: result.percentage,
+          passed: result.passed,
+          status: result.status,
+          violationCount: result.violationCount || 0,
+          completionTime: result.completionTime || 0,
+          startedAt: result.startedAt || '',
+          submittedAt: result.submittedAt || '',
+          examStarted: true,
+          examCompleted: true,
+          startTime: result.startTime || result.startedAt || '',
+          endTime: result.endTime || result.submittedAt || '',
+          cancelTime: isUserCancelled ? new Date().toISOString() : '',
+          autoSubmitReason: result.autoSubmitReason || '',
+          submissionType: isUserCancelled ? 'User Cancelled' : 'Submitted',
+          correctAnswers: correctAnswersCount,
+          wrongAnswers: wrongAnswersCount,
+          answers: JSON.stringify(result.answers || []),
+        }),
+        querySheets('saveViolation', {
+          employeeId: employee ? (employee.employeeId || employee._id.toString()) : '',
+          name: employee ? employee.fullName : '',
+          warningCount: result.violationCount || (isUserCancelled ? 0 : 4),
+          reason: reason || 'Camera Violations',
+        })
+      ]);
 
       const io = req.app.get('io');
       if (io) {
