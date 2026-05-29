@@ -300,9 +300,13 @@ async function startServer() {
         wrongAnswersCount = rAnswers.length - correctAnswersCount;
       }
 
-      const isUserCancelled = reason && reason.toLowerCase().includes('user cancelled');
-
-      result.status = isUserCancelled ? 'cancelled' : 'completed';
+      if (isUserCancelled) {
+        result.status = 'cancelled';
+      } else if (autoSubmit === true || autoSubmit === 'true' || reason === 'Time Expired' || reason === 'Camera Violations') {
+        result.status = 'auto-submitted';
+      } else {
+        result.status = 'submitted';
+      }
       result.submittedAt = new Date().toISOString();
       result.examCompleted = true;
       result.endTime = new Date().toISOString();
