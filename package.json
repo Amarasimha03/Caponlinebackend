@@ -7,7 +7,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "cd app && npm install && npm run build",
+    "build": "cd app && npm install && npm run build && cd .. && mkdir -p dist && cp -r app/build/* dist/",
     "start": "node index.js",
     "dev": "node index.js",
     "sync": "node git-sync.js"
