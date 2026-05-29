@@ -43,7 +43,7 @@ export default function ExamPage() {
 
   // Managers/Hooks
   const { videoRef, streamRef, webcamReady, startWebcam, stopWebcam } = useCamera(user);
-  const { screenStreamRef, screenReady, screenError, startScreenShare, stopScreenShare } = useScreenShare();
+  const { screenStreamRef, screenReady, startScreenShare, stopScreenShare } = useScreenShare();
 
   const broadcastExamStart = useCallback(() => {
     if (user?._id) {
@@ -174,7 +174,7 @@ export default function ExamPage() {
         navigate("/employee/dashboard", { replace: true });
       }
     }
-  }, [submitting, answers, violations, resultId, assessmentId, user, stopWebcam, stopScreenShare, logout, navigate, LS_EXAM_KEY]);
+  }, [submitting, answers, violations, resultId, assessmentId, user, stopWebcam, stopScreenShare, navigate, LS_EXAM_KEY]);
 
   const { timer, setTimer } = useExamTimer({
     initialTimer: assessment?.duration ? assessment.duration * 60 : 1800,
