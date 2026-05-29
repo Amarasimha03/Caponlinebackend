@@ -240,6 +240,25 @@ const useMonitoringStore = create((set, get) => ({
     set({ initialized: true });
   },
 
+  // ✅ Fix 1 — Terminate an employee's exam from the admin side
+  terminateExam: (employeeId, employeeSocketId) => {
+    console.log(`[MonitoringStore] Terminating exam for ${employeeId}`);
+
+    // Tell server to force-disconnect the employee's socket
+    socket.emit('admin:terminate-exam', { employeeId, employeeSocketId });
+
+    // Close peer connection on admin side
+    if (peerConnections[employeeId]) {
+      peerConnections[employeeId].close();
+      delete peerConnections[employeeId];
+    }
+
+    // Remove from admin UI immediately (don't wait for exam:completed echo)
+    set((state) => ({
+      activeExams: state.activeExams.filter((e) => e.employeeId !== employeeId),
+    }));
+  },
+
   rejoin: () => {
     socket.emit('admin:join');
   },

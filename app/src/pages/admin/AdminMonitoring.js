@@ -108,7 +108,7 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
 });
 
 export default function AdminMonitoring() {
-  const { activeExams, violations, connected, fetchMonitoringData, rejoin } = useMonitoringStore();
+  const { activeExams, violations, connected, fetchMonitoringData, rejoin, terminateExam } = useMonitoringStore();
   const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   const selectedCameraRef = useRef(null);
@@ -274,12 +274,29 @@ export default function AdminMonitoring() {
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
                   <span style={{ fontSize: 14, fontWeight: 700 }}>Proctoring: {selectedCandidate.employeeName}</span>
                 </div>
-                <button onClick={() => setSelectedCandidate(null)} style={{
-                  background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <X size={20} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* ✅ Fix 4 — Terminate Exam button */}
+                  <button
+                    onClick={() => {
+                      terminateExam(selectedCandidate.employeeId, selectedCandidate.socketId);
+                      setSelectedCandidate(null);
+                    }}
+                    style={{
+                      background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+                      borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
+                      color: '#ef4444', fontSize: 12, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <ShieldAlert size={14} /> Terminate Exam
+                  </button>
+                  <button onClick={() => setSelectedCandidate(null)} style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               {/* Modal Body */}
