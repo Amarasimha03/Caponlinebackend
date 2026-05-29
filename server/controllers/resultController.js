@@ -4,21 +4,23 @@ exports.getResults = async (req, res) => {
   try {
     const { assessmentId, employeeId } = req.query;
     
-    const resRes = await querySheets('getResults');
-    let results = resRes.data || [];
+    // Fetch results, employees, and assessments in parallel to avoid accumulation timeouts
+    const [resRes, empRes, assRes] = await Promise.all([
+      querySheets('getResults'),
+      querySheets('getEmployees'),
+      querySheets('getAssessments')
+    ]);
     
+    let results = resRes.data || [];
+    const employees = empRes.data || [];
+    const assessments = assRes.data || [];
+
     if (assessmentId) results = results.filter(r => String(r.assessmentId || r.assessment) === String(assessmentId));
     if (employeeId) results = results.filter(r => String(r.employeeMongoId || r.employee) === String(employeeId));
     if (req.user.role === 'employee') results = results.filter(r => String(r.employeeMongoId || r.employee) === String(req.user._id));
     
     // Sort
     results.sort((a, b) => new Date(b.submittedAt || b.createdAt || 0) - new Date(a.submittedAt || a.createdAt || 0));
-
-    // Populate employee and assessment details
-    const empRes = await querySheets('getEmployees');
-    const employees = empRes.data || [];
-    const assRes = await querySheets('getAssessments');
-    const assessments = assRes.data || [];
 
     const mapped = results.map(r => {
       const eId = r.employee || r.employeeMongoId;
