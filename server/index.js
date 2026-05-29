@@ -69,8 +69,6 @@ app.use(compression());
 // ── CORS: Bulletproof — allow any origin, handle OPTIONS preflight ──────────────
 const ALLOWED_ORIGINS = [
   process.env.CLIENT_URL,
-  'http://localhost:3000',
-  'http://localhost:5000',
 ].filter(Boolean); // removes undefined if CLIENT_URL not set
 
 app.use((req, res, next) => {
