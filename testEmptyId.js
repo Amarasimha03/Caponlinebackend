@@ -2,7 +2,7 @@
 
 async function test() {
   try {
-    const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+    const loginRes = await fetch('https://testbackend-48oi.onrender.com/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'admin@gmail.com', password: 'Admin123' })
@@ -11,7 +11,7 @@ async function test() {
     const token = loginData.token;
 
     console.log('Creating assessment with empty _id...');
-    const postRes = await fetch('http://localhost:5000/api/assessments', {
+    const postRes = await fetch('https://testbackend-48oi.onrender.com/api/assessments', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -3,7 +3,7 @@
 async function test() {
   try {
     // 1. Get an admin token directly using the login endpoint
-    const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+    const loginRes = await fetch('https://testbackend-48oi.onrender.com/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'admin@gmail.com', password: 'Admin123' })
@@ -16,7 +16,7 @@ async function test() {
 
     // 2. Fetch assessments
     console.log('Fetching /api/assessments...');
-    const getRes = await fetch('http://localhost:5000/api/assessments', {
+    const getRes = await fetch('https://testbackend-48oi.onrender.com/api/assessments', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     console.log('GET Status:', getRes.status);
@@ -24,7 +24,7 @@ async function test() {
 
     // 3. Create assessment
     console.log('Creating assessment...');
-    const postRes = await fetch('http://localhost:5000/api/assessments', {
+    const postRes = await fetch('https://testbackend-48oi.onrender.com/api/assessments', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
