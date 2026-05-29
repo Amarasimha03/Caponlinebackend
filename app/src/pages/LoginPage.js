@@ -132,7 +132,7 @@ export default function LoginPage() {
         }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 40 }}>
-            <img src="/logo.png" alt="Cabptoid SOLUTIONS Logo" style={{ height: 80, width: 320, objectFit: 'contain' }} />
+            <img src="/logo.svg" alt="Cabptoid SOLUTIONS Logo" style={{ height: 68, objectFit: 'contain' }} />
           </div>
 
           <form onSubmit={handleSubmit} autoComplete="off">
@@ -152,8 +152,8 @@ export default function LoginPage() {
                   style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}
                   width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 >
-                  <circle cx="12" cy="8" r="4"/>
-                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                 </svg>
                 <input
                   id="login-username"
@@ -204,8 +204,8 @@ export default function LoginPage() {
                   style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}
                   width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 >
-                  <rect x="3" y="11" width="18" height="11" rx="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
                 <input
                   id="login-password"
