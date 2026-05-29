@@ -389,6 +389,7 @@ const io = new Server(server, {
   cors: {
       origin: [
           process.env.CLIENT_URL || "https://onlinetest-vpb4.onrender.com",
+          "https://onlinetest-esyq.onrender.com",
           "http://localhost:3001"
       ],
       methods: ["GET", "POST"],
