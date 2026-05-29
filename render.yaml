@@ -4,7 +4,7 @@ services:
     env: static
     autoDeployTrigger: commit
     buildCommand: npm run build
-    publishDir: build
+    publishDir: app/build
     routes:
       - type: rewrite
         source: /*
