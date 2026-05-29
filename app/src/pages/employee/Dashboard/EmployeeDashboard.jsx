@@ -40,6 +40,7 @@ export default function EmployeeDashboard() {
   });
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const load = useCallback(async (isBackground = false) => {
@@ -77,6 +78,7 @@ export default function EmployeeDashboard() {
         }
       });
       setNotifications(notifs);
+      setHasUnread(prev => notifs.length > 0 ? (showNotif ? false : prev || true) : false);
 
     } catch (err) {
       if (err.name !== 'CanceledError' && err.message !== 'canceled') {
@@ -85,6 +87,7 @@ export default function EmployeeDashboard() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessments.length]);
 
   useEffect(() => {
@@ -168,13 +171,16 @@ export default function EmployeeDashboard() {
           {/* Notifications */}
           <div style={{ position: 'relative' }}>
             <button
-              onClick={() => setShowNotif(!showNotif)}
+              onClick={() => {
+                setShowNotif(!showNotif);
+                setHasUnread(false);
+              }}
               style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', position: 'relative', padding: 8, borderRadius: '50%', transition: 'background 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <Bell size={20} />
-              {notifications.length > 0 && (
+              {hasUnread && (
                 <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, background: '#ef4444', borderRadius: '50%', boxShadow: '0 0 10px rgba(239,68,68,0.5)' }} />
               )}
             </button>
