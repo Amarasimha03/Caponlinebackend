@@ -131,29 +131,8 @@ export default function LoginPage() {
           justifyContent: 'center',
         }}>
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 }}>
-            {/* Cabptoid icon */}
-            <div style={{
-              width: 42,
-              height: 42,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #1a6dff, #0047cc)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(26,109,255,0.35)',
-              flexShrink: 0,
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="#fff" strokeWidth="2"/>
-                <path d="M9 9 L15 12 L9 15" fill="#fff"/>
-                <circle cx="12" cy="12" r="2" fill="#fff"/>
-              </svg>
-            </div>
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f1e3d', letterSpacing: '-0.3px', lineHeight: 1.1 }}>Cabptoid</div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#3b9eff', letterSpacing: '3px', textTransform: 'uppercase' }}>SOLUTIONS</div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 40 }}>
+            <img src="/logo.svg" alt="Cabptoid SOLUTIONS Logo" style={{ height: 42, objectFit: 'contain' }} />
           </div>
 
           <form onSubmit={handleSubmit} autoComplete="off">

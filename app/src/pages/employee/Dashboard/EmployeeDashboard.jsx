@@ -118,8 +118,8 @@ export default function EmployeeDashboard() {
   };
 
   const validAssessments = Array.isArray(assessments) ? assessments : [];
-  
-  const filteredAssessments = validAssessments.filter(a => 
+
+  const filteredAssessments = validAssessments.filter(a =>
     a.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -135,7 +135,12 @@ export default function EmployeeDashboard() {
         position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(20px)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src="/logo.svg" alt="CABPTOID SOLUTIONS Logo" style={{ height: 32, objectFit: 'contain' }} />
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LayoutDashboard size={20} color="#fff" />
+          </div>
+          <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Employee<span style={{ color: 'var(--primary)' }}>Portal</span>
+          </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
@@ -227,7 +232,7 @@ export default function EmployeeDashboard() {
       {/* Main Content */}
       <main style={{ padding: '40px 32px', maxWidth: 1400, margin: '0 auto' }}>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          
+
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 40 }}>
             <div>
               <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', marginBottom: 8, letterSpacing: '-0.02em' }}>
@@ -238,9 +243,9 @@ export default function EmployeeDashboard() {
           </div>
 
           <DashboardStats assessments={validAssessments} />
-          
+
           <MyExamsTable loading={loading} assessments={pending} handleViewResult={handleViewResult} />
-          
+
           <CompletedResultsTable loading={loading} completed={completed} handleViewResult={handleViewResult} />
 
         </motion.div>
