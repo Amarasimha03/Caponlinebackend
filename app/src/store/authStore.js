@@ -21,6 +21,13 @@ const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
+      // Clear old caches first to prevent showing other user's data
+      localStorage.removeItem('employee_assessments_cache');
+      localStorage.removeItem('employee_assessments_timestamp');
+      localStorage.removeItem('admin_assessments_list');
+      localStorage.removeItem('admin_employees_list');
+      localStorage.removeItem('admin_questions_list');
+
       const { data } = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -52,6 +59,12 @@ const useAuthStore = create((set, get) => ({
   register: async (userData) => {
     set({ isLoading: true, error: null });
     try {
+      localStorage.removeItem('employee_assessments_cache');
+      localStorage.removeItem('employee_assessments_timestamp');
+      localStorage.removeItem('admin_assessments_list');
+      localStorage.removeItem('admin_employees_list');
+      localStorage.removeItem('admin_questions_list');
+
       const { data } = await api.post('/auth/register', userData);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -82,6 +95,11 @@ const useAuthStore = create((set, get) => ({
     localStorage.removeItem('portal_user');
     localStorage.removeItem('activeTest');
     localStorage.removeItem('examProgress');
+    localStorage.removeItem('employee_assessments_cache');
+    localStorage.removeItem('employee_assessments_timestamp');
+    localStorage.removeItem('admin_assessments_list');
+    localStorage.removeItem('admin_employees_list');
+    localStorage.removeItem('admin_questions_list');
     set({ user: null, token: null });
   },
 

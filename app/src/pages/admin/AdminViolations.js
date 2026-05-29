@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Search } from 'lucide-react';
 import api from '../../services/api';
@@ -30,14 +30,27 @@ export default function AdminViolations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const TYPES = [...new Set(violations.map(v => v.type))];
-  const filtered = violations.filter(v =>
+  const TYPES = useMemo(() => [...new Set(violations.map(v => v.type))], [violations]);
+  const filtered = useMemo(() => violations.filter(v =>
     (!typeFilter || v.type === typeFilter) &&
     (!search || v.employee?.fullName?.toLowerCase().includes(search.toLowerCase()))
-  );
+  ), [violations, typeFilter, search]);
   const sevColor = (s) => s === 'high' ? 'badge-danger' : s === 'medium' ? 'badge-warning' : 'badge-info';
 
-  if (loading) return <div className="loading-center"><div className="loading-spinner" /></div>;
+  const SkeletonRow = () => (
+    <tr style={{ animation: 'pulse 1.5s infinite ease-in-out' }}>
+      <td>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 30, height: 30, borderRadius: '50%', backgroundColor: 'var(--border-light)' }} />
+          <div style={{ height: 16, width: 100, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+        </div>
+      </td>
+      <td><div style={{ height: 16, width: 140, backgroundColor: 'var(--border-light)', borderRadius: 4 }} /></td>
+      <td><div style={{ height: 20, width: 80, backgroundColor: 'var(--border-light)', borderRadius: 10 }} /></td>
+      <td><div style={{ height: 20, width: 60, backgroundColor: 'var(--border-light)', borderRadius: 10 }} /></td>
+      <td><div style={{ height: 16, width: 120, backgroundColor: 'var(--border-light)', borderRadius: 4 }} /></td>
+    </tr>
+  );
 
   return (
     <div>
@@ -62,21 +75,25 @@ export default function AdminViolations() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr><th>Employee</th><th>Assessment</th><th>Type</th><th>Severity</th><th>Time</th></tr></thead>
           <tbody>
-            {filtered.map((v, i) => (
-              <motion.tr key={v._id ? `${v._id}-${i}` : i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
-                <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div className="avatar" style={{ width: 30, height: 30, fontSize: 12, background: 'var(--gradient-danger)' }}>{v.employee?.fullName?.[0]}</div>
-                  <div><div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{v.employee?.fullName}</div></div>
-                </div></td>
-                <td style={{ fontSize: 13 }}>{v.assessment?.title}</td>
-                <td><span className="badge badge-warning">{v.type?.replace(/-/g, ' ')}</span></td>
-                <td><span className={`badge ${sevColor(v.severity)}`}>{v.severity}</span></td>
-                <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(v.timestamp).toLocaleString()}</td>
-              </motion.tr>
-            ))}
+            {loading && violations.length === 0 ? (
+              [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
+            ) : (
+              filtered.map((v, i) => (
+                <motion.tr key={v._id ? `${v._id}-${i}` : i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
+                  <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="avatar" style={{ width: 30, height: 30, fontSize: 12, background: 'var(--gradient-danger)' }}>{v.employee?.fullName?.[0]}</div>
+                    <div><div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{v.employee?.fullName}</div></div>
+                  </div></td>
+                  <td style={{ fontSize: 13 }}>{v.assessment?.title}</td>
+                  <td><span className="badge badge-warning">{v.type?.replace(/-/g, ' ')}</span></td>
+                  <td><span className={`badge ${sevColor(v.severity)}`}>{v.severity}</span></td>
+                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(v.timestamp).toLocaleString()}</td>
+                </motion.tr>
+              ))
+            )}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="empty-state"><AlertTriangle size={48} /><h3>No violations</h3></div>}
+        {!loading && filtered.length === 0 && <div className="empty-state"><AlertTriangle size={48} /><h3>No violations</h3></div>}
       </div>
     </div>
   );

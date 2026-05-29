@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Plus, Edit, Trash2, X, Clock, Award, Settings,
-  Send, Users, RefreshCw, User, Building2
+  Send, Users, RefreshCw, User, Building2, Tag, AlertTriangle, Shuffle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -13,9 +13,105 @@ import socket from '../../services/socket';
 const CATEGORIES = ['General', 'Technical', 'Aptitude', 'HR', 'Coding'];
 const STATUS_COLORS = { draft: 'badge-muted', active: 'badge-success', scheduled: 'badge-warning', completed: 'badge-info' };
 const defaultForm = {
-  title: '', description: '', duration: 30, timePerQuestion: 30,
+  _id: undefined, title: '', description: '', duration: 30, timePerQuestion: 30,
   passingScore: 60, category: 'General', isRandomized: false, maxViolations: 3, status: 'draft',
+  questions: [],
 };
+
+const EmployeeRow = React.memo(({ employee, isSelected, onToggle }) => {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', cursor: 'pointer', borderRadius: 6 }}>
+      <input type="checkbox" checked={isSelected} onChange={() => onToggle(employee._id)} style={{ accentColor: 'var(--primary)' }} />
+      <div className="avatar" style={{ width: 28, height: 28, fontSize: 12 }}>{(employee.fullName || '?')[0]}</div>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{employee.fullName}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{employee.email} · {employee.department}</div>
+      </div>
+    </label>
+  );
+});
+
+const getQuestionCount = (questions) => {
+  if (!questions) return 0;
+  if (Array.isArray(questions)) return questions.length;
+  if (typeof questions === 'string') {
+    try {
+      const parsed = JSON.parse(questions);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0; // fallback if invalid JSON
+    }
+  }
+  return 0;
+};
+
+const AssessmentCard = React.memo(({ a, i, openSend, openEdit, triggerDelete, navigate }) => {
+  const isSyncing = String(a._id).startsWith('temp-');
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.05, 0.5) }}
+      className="card" style={{ padding: 0, overflow: 'hidden', opacity: isSyncing ? 0.7 : 1 }}>
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', flex: 1, marginRight: 8 }}>{a.title}</h3>
+          <span className={`badge ${STATUS_COLORS[a.status] || 'badge-muted'}`}>{isSyncing ? 'syncing...' : a.status}</span>
+        </div>
+        {a.description && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{a.description}</p>}
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+          <Users size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+          {a.assignedTo?.length || 0} employees assigned
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 24px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, rowGap: 16 }}>
+        <div style={{ textAlign: 'center' }}>
+          <Clock size={15} color="var(--secondary)" />
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{a.duration}m</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Duration</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <FileText size={15} color="var(--primary-light)" />
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{getQuestionCount(a.questions)}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Questions</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <Award size={15} color="var(--success)" />
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{a.passingScore}%</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pass Score</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <Tag size={15} color="var(--info)" />
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>{a.category || 'General'}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Category</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <AlertTriangle size={15} color="var(--warning)" />
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{a.maxViolations || 0}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Violations</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <Shuffle size={15} color={a.isRandomized ? 'var(--success)' : 'var(--text-muted)'} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>{a.isRandomized ? 'Yes' : 'No'}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Randomized</div>
+        </div>
+      </div>
+
+      <div style={{ padding: '12px 24px 16px', display: 'flex', gap: 8, borderTop: '1px solid var(--border-light)' }}>
+        <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => openSend(a)} disabled={isSyncing}>
+          <Send size={14} /> {isSyncing ? 'Syncing...' : 'Send Exam'}
+        </button>
+        <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/admin/questions/${a._id}`)} disabled={isSyncing} title={isSyncing ? 'Syncing with Google Sheets...' : 'Questions Settings'}>
+          <Settings size={14} />
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(a)} disabled={isSyncing}>
+          <Edit size={14} />
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(a._id)} disabled={isSyncing}>
+          <Trash2 size={14} color="var(--danger)" />
+        </button>
+      </div>
+    </motion.div>
+  );
+});
 
 export default function AdminAssessments() {
   const [assessments, setAssessments] = useState(() => {
@@ -81,6 +177,8 @@ export default function AdminAssessments() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleChange = (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setForm({ ...form, [e.target.name]: val });
@@ -88,59 +186,123 @@ export default function AdminAssessments() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
+    const previousAssessments = [...assessments];
+    const tempId = form._id && form._id.trim() !== '' ? form._id : `temp-${Date.now()}`;
+    const optimisticAssessment = {
+      ...defaultForm,
+      ...form,
+      _id: editing ? editing._id : tempId,
+      questions: editing ? editing.questions : (form.questions || []),
+      assignedTo: editing ? editing.assignedTo : [],
+      createdAt: editing ? editing.createdAt : new Date().toISOString(),
+      status: form.status || 'draft',
+    };
+
+    // Close modal & reset form immediately for an instant response!
+    setShowModal(false);
+    setForm(defaultForm);
+    const wasEditing = editing;
+    setEditing(null);
+
+    // Apply Optimistic UI Update immediately
+    if (wasEditing) {
+      setAssessments(prev => prev.map(a => a._id === wasEditing._id ? optimisticAssessment : a));
+    } else {
+      setAssessments(prev => [optimisticAssessment, ...prev]);
+    }
+
+    setSubmitting(true);
     try {
-      if (editing) {
-        await api.put(`/assessments/${editing._id}`, form);
-        toast.success('Assessment updated');
-      } else {
-        await api.post('/assessments', form);
-        toast.success('Assessment created!');
+      const payload = { ...form };
+      if (!payload._id || payload._id.trim() === '') {
+        delete payload._id;
       }
-      setShowModal(false); setEditing(null); load();
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+
+      if (wasEditing) {
+        const res = await api.put(`/assessments/${wasEditing._id}`, payload);
+        toast.success('Assessment updated successfully');
+        setAssessments(prev => {
+          const updated = prev.map(a => a._id === wasEditing._id ? res.data.assessment : a);
+          localStorage.setItem('admin_assessments_list', JSON.stringify(updated));
+          return updated;
+        });
+      } else {
+        const res = await api.post('/assessments', payload);
+        toast.success('Assessment created successfully');
+        setAssessments(prev => {
+          const updated = prev.map(a => a._id === tempId ? res.data.assessment : a);
+          localStorage.setItem('admin_assessments_list', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    } catch (err) { 
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to save assessment'); 
+      // Revert Optimistic Update
+      setAssessments(previousAssessments);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const triggerDelete = (id) => {
-    setDeleteTarget(id);
-  };
-
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+    const targetId = deleteTarget; // Store local copy to prevent closure issues
+    
+    // Instant optimistic UI update
     setDeleteLoading(true);
+    const previousAssessments = [...assessments];
+    setAssessments(prev => {
+      const filtered = prev.filter(a => String(a._id) !== String(targetId));
+      localStorage.setItem('admin_assessments_list', JSON.stringify(filtered));
+      return filtered;
+    });
+    setDeleteTarget(null); // Hide modal instantly
+    
     try {
-      await api.delete(`/assessments/${deleteTarget}`);
+      await api.delete(`/assessments/${targetId}`);
       toast.success('Assessment and all related records permanently deleted');
-      setDeleteTarget(null);
-      load();
+      // No load() called to prevent UI flicker
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete assessment');
+      // Revert Optimistic UI Update on failure
+      setAssessments(previousAssessments);
+      localStorage.setItem('admin_assessments_list', JSON.stringify(previousAssessments));
+    } finally {
+      setDeleteLoading(false);
     }
-    setDeleteLoading(false);
   };
 
-  const openEdit = (a) => {
+  const openEdit = useCallback((a) => {
     setEditing(a);
     setForm({
+      _id: a._id,
       title: a.title, description: a.description || '', duration: a.duration,
       timePerQuestion: a.timePerQuestion, passingScore: a.passingScore,
       category: a.category, isRandomized: a.isRandomized, maxViolations: a.maxViolations, status: a.status,
     });
     setShowModal(true);
-  };
+  }, []);
 
-  const openSend = (a) => {
+  const openSend = useCallback((a) => {
     setShowSendModal(a);
     setSendTarget('all');
     setSendDept('');
     setSendEmployeeIds([]);
-  };
+  }, []);
 
-  const toggleEmployeeSelect = (id) => {
+  const triggerDelete = useCallback((id) => {
+    setDeleteTarget(id);
+  }, []);
+
+  const toggleEmployeeSelect = useCallback((id) => {
     setSendEmployeeIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
+  }, []);
 
   const departments = [...new Set(employees.map(e => e.department).filter(Boolean))];
 
@@ -178,11 +340,36 @@ export default function AdminAssessments() {
     setSending(false);
   };
 
-  // const filteredEmployees = sendTarget === 'department'
-  //   ? employees.filter(e => e.department === sendDept)
-  //   : employees; // Removed unused variable
+  const stats = React.useMemo(() => [
+    { label: 'Total', value: assessments.length, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
+    { label: 'Active', value: assessments.filter(a => a.status === 'active').length, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    { label: 'Draft', value: assessments.filter(a => a.status === 'draft').length, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    { label: 'Completed', value: assessments.filter(a => a.status === 'completed').length, color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)' },
+  ], [assessments]);
 
-  if (loading) return <div className="loading-center"><div className="loading-spinner" /></div>;
+  // Skeleton Card Loader
+  const SkeletonCard = () => (
+    <div className="card" style={{ padding: 0, overflow: 'hidden', animation: 'pulse 1.5s infinite ease-in-out' }}>
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)' }}>
+        <div style={{ height: 18, width: '60%', backgroundColor: 'var(--border-light)', borderRadius: 4, marginBottom: 12 }} />
+        <div style={{ height: 12, width: '90%', backgroundColor: 'var(--border-light)', borderRadius: 4, marginBottom: 8 }} />
+        <div style={{ height: 12, width: '40%', backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+      </div>
+      <div style={{ padding: '14px 24px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, rowGap: 16 }}>
+        {[...Array(6)].map((_, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ height: 24, width: 24, backgroundColor: 'var(--border-light)', borderRadius: '50%', marginBottom: 8 }} />
+            <div style={{ height: 12, width: 40, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: '12px 24px 16px', display: 'flex', gap: 8, borderTop: '1px solid var(--border-light)' }}>
+        <div style={{ height: 32, flex: 1, backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+        <div style={{ height: 32, width: 32, backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+        <div style={{ height: 32, width: 32, backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -193,7 +380,9 @@ export default function AdminAssessments() {
           <p>Create, manage, and assign assessments to employees</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-secondary" onClick={load} title="Refresh"><RefreshCw size={16} /></button>
+          <button className="btn btn-secondary" onClick={load} title="Refresh" disabled={loading}>
+            <RefreshCw size={16} className={loading ? "spin" : ""} />
+          </button>
           <button className="btn btn-primary" onClick={() => { setEditing(null); setForm(defaultForm); setShowModal(true); }}>
             <Plus size={18} /> Create Assessment
           </button>
@@ -202,12 +391,7 @@ export default function AdminAssessments() {
 
       {/* Stats */}
       <div className="stats-grid" style={{ marginTop: 24, marginBottom: 20 }}>
-        {[
-          { label: 'Total', value: assessments.length, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
-          { label: 'Active', value: assessments.filter(a => a.status === 'active').length, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-          { label: 'Draft', value: assessments.filter(a => a.status === 'draft').length, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
-          { label: 'Completed', value: assessments.filter(a => a.status === 'completed').length, color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)' },
-        ].map((s, i) => (
+        {stats.map((s, i) => (
           <motion.div key={s.label} className="stat-card" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
             <div className="stat-icon" style={{ background: s.bg }}><FileText size={22} color={s.color} /></div>
             <div className="stat-info"><h3>{s.value}</h3><p>{s.label}</p></div>
@@ -217,58 +401,24 @@ export default function AdminAssessments() {
 
       {/* Assessment Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 20 }}>
-        {assessments.map((a, i) => (
-          <motion.div key={a._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', flex: 1, marginRight: 8 }}>{a.title}</h3>
-                <span className={`badge ${STATUS_COLORS[a.status] || 'badge-muted'}`}>{a.status}</span>
-              </div>
-              {a.description && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{a.description}</p>}
-              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-                <Users size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                {a.assignedTo?.length || 0} employees assigned
-              </div>
-            </div>
-
-            <div style={{ padding: '14px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <div style={{ textAlign: 'center' }}>
-                <Clock size={15} color="var(--secondary)" />
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{a.duration}m</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Duration</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <FileText size={15} color="var(--primary-light)" />
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{a.questions?.length || 0}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Questions</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <Award size={15} color="var(--success)" />
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{a.passingScore}%</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pass Score</div>
-              </div>
-            </div>
-
-            <div style={{ padding: '12px 24px 16px', display: 'flex', gap: 8, borderTop: '1px solid var(--border-light)' }}>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => openSend(a)}>
-                <Send size={14} /> Send Exam
-              </button>
-              <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/admin/questions/${a._id}`)}>
-                <Settings size={14} />
-              </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => openEdit(a)}>
-                <Edit size={14} />
-              </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(a._id)}>
-                <Trash2 size={14} color="var(--danger)" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
+        {loading && assessments.length === 0 ? (
+          [...Array(6)].map((_, i) => <SkeletonCard key={i} />)
+        ) : (
+          assessments.map((a, i) => (
+            <AssessmentCard
+              key={a._id || `temp-${i}`}
+              a={a}
+              i={i}
+              openSend={openSend}
+              openEdit={openEdit}
+              triggerDelete={triggerDelete}
+              navigate={navigate}
+            />
+          ))
+        )}
       </div>
 
-      {assessments.length === 0 && (
+      {!loading && assessments.length === 0 && (
         <div className="empty-state" style={{ marginTop: 40 }}>
           <FileText size={48} />
           <h3>No assessments yet</h3>
@@ -286,9 +436,15 @@ export default function AdminAssessments() {
                 <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
               </div>
               <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label className="form-label">Title *</label>
-                  <input className="form-input" name="title" value={form.title} onChange={handleChange} required placeholder="e.g. JavaScript Fundamentals" />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+                  <div className="form-group">
+                    <label className="form-label">Custom ID (Optional)</label>
+                    <input className="form-input" name="_id" value={form._id || ''} onChange={handleChange} placeholder="e.g. AA01" disabled={!!editing} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Title *</label>
+                    <input className="form-input" name="title" value={form.title} onChange={handleChange} required placeholder="e.g. JavaScript Fundamentals" />
+                  </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Description</label>
@@ -357,7 +513,7 @@ export default function AdminAssessments() {
               {/* Exam Info */}
               <div style={{ background: 'rgba(99,102,241,0.08)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <div><span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Exam</span><div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{showSendModal.title}</div></div>
-                <div><span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Questions</span><div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{showSendModal.questions?.length || 0}</div></div>
+                <div><span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Questions</span><div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{getQuestionCount(showSendModal.questions)}</div></div>
                 <div><span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Duration</span><div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{showSendModal.duration} min</div></div>
                 <div><span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Category</span><div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{showSendModal.category}</div></div>
               </div>
@@ -406,14 +562,12 @@ export default function AdminAssessments() {
                     {employees.length === 0
                       ? <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 12, fontSize: 13 }}>No employees found</p>
                       : employees.map(e => (
-                        <label key={e._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', cursor: 'pointer', borderRadius: 6 }}>
-                          <input type="checkbox" checked={sendEmployeeIds.includes(e._id)} onChange={() => toggleEmployeeSelect(e._id)} style={{ accentColor: 'var(--primary)' }} />
-                          <div className="avatar" style={{ width: 28, height: 28, fontSize: 12 }}>{(e.fullName || '?')[0]}</div>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{e.fullName}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{e.email} · {e.department}</div>
-                          </div>
-                        </label>
+                        <EmployeeRow
+                          key={e._id}
+                          employee={e}
+                          isSelected={sendEmployeeIds.includes(e._id)}
+                          onToggle={toggleEmployeeSelect}
+                        />
                       ))}
                   </div>
                 </div>
@@ -439,7 +593,7 @@ export default function AdminAssessments() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         title="Delete Assessment"
-        message="Are you sure you want to permanently delete this assessment? This will completely remove the assessment, all its MCQs/questions, result logs, and violation histories from MongoDB and Google Sheets."
+        message="Are you sure you want to permanently delete this assessment? This will completely remove the assessment, all its MCQs/questions, result logs, and violation histories from Google Sheets."
         loading={deleteLoading}
       />
     </div>

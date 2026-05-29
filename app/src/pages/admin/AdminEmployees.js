@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Search, Edit, Trash2, X, BookOpen, Eye, Filter, RefreshCw, Upload, Download, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -218,13 +218,17 @@ export default function AdminEmployees() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
+    const prevEmployees = [...employees];
+    // Optimistic UI update
+    setEmployees(employees.filter(e => e._id !== deleteTarget));
     try {
       await api.delete(`/employees/${deleteTarget}`);
       toast.success('Employee permanently deleted');
       setDeleteTarget(null);
-      load();
+      // load(); // No need to load immediately as optimistic update covers it
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete employee');
+      setEmployees(prevEmployees); // Revert on failure
     }
     setDeleteLoading(false);
   };
@@ -264,23 +268,47 @@ export default function AdminEmployees() {
     } catch { toast.error('Failed to assign'); }
   };
 
-  const filtered = employees.filter(e => {
-    const matchSearch = (e.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (e.email || '').toLowerCase().includes(search.toLowerCase()) ||
-      (e.employeeId || '').toLowerCase().includes(search.toLowerCase()) ||
-      (e.department || '').toLowerCase().includes(search.toLowerCase());
-    const matchDept = deptFilter === 'All' || e.department === deptFilter;
-    return matchSearch && matchDept;
-  });
+  const filtered = useMemo(() => {
+    return employees.filter(e => {
+      const matchSearch = (e.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (e.email || '').toLowerCase().includes(search.toLowerCase()) ||
+        (e.employeeId || '').toLowerCase().includes(search.toLowerCase()) ||
+        (e.department || '').toLowerCase().includes(search.toLowerCase());
+      const matchDept = deptFilter === 'All' || e.department === deptFilter;
+      return matchSearch && matchDept;
+    });
+  }, [employees, search, deptFilter]);
 
-  const statCards = [
+  const statCards = useMemo(() => [
     { label: 'Total Employees', value: employees.length, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
     { label: 'Active', value: employees.filter(e => e.isActive).length, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
     { label: 'Inactive', value: employees.filter(e => !e.isActive).length, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
     { label: 'Departments', value: [...new Set(employees.map(e => e.department).filter(Boolean))].length, color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)' },
-  ];
+  ], [employees]);
 
-  if (loading) return <div className="loading-center"><div className="loading-spinner" /></div>;
+  const SkeletonRow = () => (
+    <tr style={{ animation: 'pulse 1.5s infinite ease-in-out' }}>
+      <td>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'var(--border-light)' }} />
+          <div>
+            <div style={{ height: 16, width: 120, backgroundColor: 'var(--border-light)', borderRadius: 4, marginBottom: 6 }} />
+            <div style={{ height: 12, width: 180, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+          </div>
+        </div>
+      </td>
+      <td><div style={{ height: 14, width: 80, backgroundColor: 'var(--border-light)', borderRadius: 4 }} /></td>
+      <td><div style={{ height: 24, width: 80, backgroundColor: 'var(--border-light)', borderRadius: 12 }} /></td>
+      <td><div style={{ height: 14, width: 100, backgroundColor: 'var(--border-light)', borderRadius: 4 }} /></td>
+      <td><div style={{ height: 24, width: 70, backgroundColor: 'var(--border-light)', borderRadius: 12 }} /></td>
+      <td><div style={{ height: 24, width: 40, backgroundColor: 'var(--border-light)', borderRadius: 12 }} /></td>
+      <td>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[...Array(4)].map((_, i) => <div key={i} style={{ height: 28, width: 28, backgroundColor: 'var(--border-light)', borderRadius: 6 }} />)}
+        </div>
+      </td>
+    </tr>
+  );
 
   return (
     <div>
@@ -350,50 +378,54 @@ export default function AdminEmployees() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((emp, i) => (
-                <motion.tr key={`${emp._id}-${i}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div className="avatar">{(emp.fullName || '?')[0].toUpperCase()}</div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{emp.fullName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{emp.email}</div>
+              {loading && employees.length === 0 ? (
+                [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
+              ) : (
+                filtered.map((emp, i) => (
+                  <motion.tr key={`${emp._id}-${i}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div className="avatar">{(emp.fullName || '?')[0].toUpperCase()}</div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{emp.fullName}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{emp.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                    {emp.employeeId || emp._id?.slice(-8).toUpperCase()}
-                  </td>
-                  <td><span className="badge badge-primary">{emp.department || '—'}</span></td>
-                  <td style={{ fontSize: 13 }}>{emp.phone || '—'}</td>
-                  <td>
-                    <span className={`badge ${emp.role === 'admin' ? 'badge-warning' : 'badge-info'}`}>
-                      {emp.role || 'employee'}
-                    </span>
-                  </td>
-                  <td><span className="badge badge-info">{emp.assignedAssessments?.length || 0}</span></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setShowViewModal(emp)} title="View Profile">
-                        <Eye size={14} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => openAssign(emp)} title="Assign Assessment">
-                        <BookOpen size={14} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(emp)} title="Edit">
-                        <Edit size={14} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(emp._id)} title="Delete">
-                        <Trash2 size={14} color="var(--danger)" />
-                      </button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
+                    </td>
+                    <td style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                      {emp.employeeId || emp._id?.slice(-8).toUpperCase()}
+                    </td>
+                    <td><span className="badge badge-primary">{emp.department || '—'}</span></td>
+                    <td style={{ fontSize: 13 }}>{emp.phone || '—'}</td>
+                    <td>
+                      <span className={`badge ${emp.role === 'admin' ? 'badge-warning' : 'badge-info'}`}>
+                        {emp.role || 'employee'}
+                      </span>
+                    </td>
+                    <td><span className="badge badge-info">{emp.assignedAssessments?.length || 0}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setShowViewModal(emp)} title="View Profile">
+                          <Eye size={14} />
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => openAssign(emp)} title="Assign Assessment">
+                          <BookOpen size={14} />
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(emp)} title="Edit">
+                          <Edit size={14} />
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(emp._id)} title="Delete">
+                          <Trash2 size={14} color="var(--danger)" />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="empty-state">
             <Users size={48} />
             <h3>No employees found</h3>

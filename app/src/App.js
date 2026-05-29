@@ -18,10 +18,11 @@ const AdminQuestions = lazy(() => import('./pages/admin/AdminQuestions'));
 const AdminResults = lazy(() => import('./pages/admin/AdminResults'));
 const AdminViolations = lazy(() => import('./pages/admin/AdminViolations'));
 const AdminMonitoring = lazy(() => import('./pages/admin/AdminMonitoring'));
-const EmployeeDashboard = lazy(() => import('./pages/employee/EmployeeDashboard'));
-const ExamPage = lazy(() => import('./pages/employee/ExamPage'));
-const ResultPage = lazy(() => import('./pages/employee/ResultPage'));
-const ExamTerminatedPage = lazy(() => import('./pages/employee/ExamTerminatedPage'));
+const EmployeeDashboard = lazy(() => import('./pages/employee/Dashboard/EmployeeDashboard'));
+
+const ExamPage = lazy(() => import('./pages/employee/Exam/ExamPage'));
+const ResultPage = lazy(() => import('./pages/employee/Result/ResultPage'));
+const ExamTerminatedPage = lazy(() => import('./pages/employee/Terminated/ExamTerminatedPage'));
 
 const NavigateToResult = () => {
   const { examId } = useParams();
@@ -51,23 +52,23 @@ function App() {
       if (!socket.connected) {
         socket.connect();
       }
-      
+
       // Async background preloading of admin lazy route bundles for 0.0s redirect/routing latency
       const savedUser = localStorage.getItem('portal_user') || localStorage.getItem('user');
       let parsedUser = null;
       if (savedUser && savedUser !== 'undefined') {
         try {
           parsedUser = JSON.parse(savedUser);
-        } catch {}
+        } catch { }
       }
       const isAdmin = user?.role === 'admin' || parsedUser?.role === 'admin';
       if (isAdmin) {
-        import('./pages/admin/AdminDashboard').catch(() => {});
-        import('./pages/admin/AdminEmployees').catch(() => {});
-        import('./pages/admin/AdminAssessments').catch(() => {});
-        import('./pages/admin/AdminResults').catch(() => {});
-        import('./pages/admin/AdminViolations').catch(() => {});
-        import('./pages/admin/AdminMonitoring').catch(() => {});
+        import('./pages/admin/AdminDashboard').catch(() => { });
+        import('./pages/admin/AdminEmployees').catch(() => { });
+        import('./pages/admin/AdminAssessments').catch(() => { });
+        import('./pages/admin/AdminResults').catch(() => { });
+        import('./pages/admin/AdminViolations').catch(() => { });
+        import('./pages/admin/AdminMonitoring').catch(() => { });
       }
     } else {
       if (socket.connected) {
@@ -102,6 +103,7 @@ function App() {
             <Route path="questions/:assessmentId" element={<AdminQuestions />} />
             <Route path="results" element={<AdminResults />} />
             <Route path="result/:employeeId/:examId" element={<ResultPage />} />
+            <Route path="results/:resultId" element={<ResultPage />} />
             <Route path="violations" element={<AdminViolations />} />
             <Route path="monitoring" element={<AdminMonitoring />} />
           </Route>
@@ -110,7 +112,10 @@ function App() {
           <Route path="/employee" element={<ProtectedRoute role="employee"><EmployeeLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="/employee/dashboard" replace />} />
             <Route path="dashboard" element={<EmployeeDashboard />} />
+
             <Route path="result/:examId" element={<ResultPage />} />
+            <Route path="result/:examId/:resultId" element={<ResultPage />} />
+            <Route path="results/:resultId" element={<ResultPage />} />
           </Route>
 
           {/* Fallbacks & Compatibility */}

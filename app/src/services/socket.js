@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 const SOCKET_URL = "https://testbackend-a1nl.onrender.com";
 
 const socket = io(SOCKET_URL, {
-    transports: ["websocket"],
+    transports: ["websocket", "polling"],
     withCredentials: true
 });
 

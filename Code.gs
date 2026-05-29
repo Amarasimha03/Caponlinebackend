@@ -49,6 +49,7 @@ function handleRequest(e) {
 
       // ── Questions ──
       case 'addQuestion':       return addQuestion(body);
+      case 'bulkAddQuestions':  return bulkAddQuestions(body);
       case 'getQuestions':      return getQuestions(body);
 
       // ── Assignments ──
@@ -272,27 +273,86 @@ function createAssessment(body) {
     var sheet = getSheet('assessments');
     ensureHeaders(sheet, ASM_HEADERS);
 
-    var id  = body._id || generateId('ASM');
+    var assessmentId = body._id && body._id.trim() !== '' ? body._id : generateId('ASM');
     var now = new Date().toISOString();
 
-    sheet.appendRow([
-      id,
+    var row = [
+      assessmentId,
       body.title || '',
       body.description || '',
       body.duration || 30,
-      body.passingScore || body.passScore || 60,
+      body.passingScore || 60,
       body.category || 'General',
       body.status || 'draft',
       body.maxViolations || 3,
-      body.isRandomized ? 'true' : 'false',
+      body.isRandomized || false,
       JSON.stringify(body.questions || []),
       JSON.stringify(body.assignedTo || []),
-      body.createdBy || '',
+      body.createdBy || 'admin',
       body.createdAt || now,
-      now
-    ]);
+      body.updatedAt || now
+    ];
 
-    return jsonResponse({ success: true, _id: id });
+    sheet.appendRow(row);
+
+    // Auto-assign to all active employees inside Google Sheets natively!
+    try {
+      var empSheet = getSheet('employees');
+      ensureHeaders(empSheet, EMP_HEADERS);
+      var empValues = empSheet.getDataRange().getValues();
+      if (empValues.length > 1) {
+        for (var r = 1; r < empValues.length; r++) {
+          var empRow = empValues[r];
+          if (!empRow[0] || empRow[0].toString().trim() === '') continue;
+          
+          var empRole = empRow[8] ? empRow[8].toString().trim() : '';
+          var empActive = empRow[10] ? empRow[10].toString().trim() : '';
+          
+          if (empRole === 'employee' && (empActive === 'true' || empActive === true || empActive === '1')) {
+            var assignedList = [];
+            try {
+              var assignedStr = empRow[12] ? empRow[12].toString() : '[]';
+              assignedList = JSON.parse(assignedStr);
+            } catch(e) {}
+            if (!Array.isArray(assignedList)) assignedList = [];
+            
+            if (assignedList.indexOf(assessmentId) === -1) {
+              assignedList.push(assessmentId);
+            }
+            
+            empRow[12] = JSON.stringify(assignedList);
+            empRow[15] = new Date().toISOString(); // updatedAt
+            
+            empSheet.getRange(r + 1, 1, 1, empRow.length).setValues([empRow]);
+          }
+        }
+      }
+    } catch(e) {
+      // Log or suppress auto-assignment errors to guarantee assessment creation succeeds
+      console.log('Error auto-assigning employees: ' + e.toString());
+    }
+
+    return jsonResponse({
+      success: true,
+      message: 'Assessment created successfully',
+      assessment: {
+        _id: assessmentId,
+        title: body.title,
+        description: body.description,
+        duration: body.duration,
+        timePerQuestion: body.timePerQuestion,
+        passingScore: body.passingScore,
+        category: body.category,
+        status: body.status,
+        maxViolations: body.maxViolations,
+        isRandomized: body.isRandomized,
+        questions: body.questions || [],
+        assignedTo: body.assignedTo || [],
+        createdBy: body.createdBy || 'admin',
+        createdAt: body.createdAt || now,
+        updatedAt: body.updatedAt || now
+      }
+    });
   } finally {
     lock.releaseLock();
   }
@@ -354,6 +414,20 @@ function addQuestion(body) {
     var id  = body._id || generateId('Q');
     var now = new Date().toISOString();
 
+    // Check if the question already exists in this assessment
+    var rows = sheetToObjects(sheet);
+    var newTitle = (body.title || body.question || '').toString().trim().toLowerCase();
+    var newAssId = (body.assessmentId || body.assessment || '').toString().trim();
+    var alreadyExists = rows.some(function(row) {
+      var rowTitle = (row.title || row.question || '').toString().trim().toLowerCase();
+      var rowAssId = (row.assessmentId || '').toString().trim();
+      return rowTitle === newTitle && rowAssId === newAssId;
+    });
+
+    if (alreadyExists) {
+      return jsonResponse({ success: true, message: 'Question already exists in this assessment', _id: 'duplicate' });
+    }
+
     // Normalize options array
     var opts = body.options || [];
     var opt1 = '', opt2 = '', opt3 = '', opt4 = '';
@@ -405,6 +479,102 @@ function getQuestions(body) {
     });
   }
   return jsonResponse({ success: true, data: rows });
+}
+
+function bulkAddQuestions(body) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = getSheet('questions');
+    ensureHeaders(sheet, Q_HEADERS);
+
+    var questions = body.questions || [];
+    var assessmentId = body.assessmentId || '';
+    var now = new Date().toISOString();
+    
+    var rows = sheetToObjects(sheet);
+    var addedIds = [];
+    
+    var existingTitles = {};
+    rows.forEach(function(row) {
+      var rowAssId = (row.assessmentId || '').toString().trim();
+      if (rowAssId === assessmentId.toString().trim()) {
+        var rowTitle = (row.title || row.question || '').toString().trim().toLowerCase();
+        existingTitles[rowTitle] = true;
+      }
+    });
+
+    for (var k = 0; k < questions.length; k++) {
+      var q = questions[k];
+      var title = q.title || q.question || '';
+      var normalizedTitle = title.toString().trim().toLowerCase();
+      
+      if (existingTitles[normalizedTitle]) {
+        continue;
+      }
+      existingTitles[normalizedTitle] = true;
+
+      var id = q._id || generateId('Q');
+      
+      var opts = q.options || [];
+      var opt1 = '', opt2 = '', opt3 = '', opt4 = '';
+      var correctIdx = -1;
+      if (opts.length > 0) {
+        opt1 = (typeof opts[0] === 'object') ? (opts[0].text || '') : opts[0] || '';
+        opt2 = opts[1] ? ((typeof opts[1] === 'object') ? (opts[1].text || '') : opts[1]) : '';
+        opt3 = opts[2] ? ((typeof opts[2] === 'object') ? (opts[2].text || '') : opts[2]) : '';
+        opt4 = opts[3] ? ((typeof opts[3] === 'object') ? (opts[3].text || '') : opts[3]) : '';
+        for (var i = 0; i < opts.length; i++) {
+          if (opts[i] && opts[i].isCorrect) { correctIdx = i; break; }
+        }
+      }
+
+      sheet.appendRow([
+        id,
+        assessmentId,
+        title,
+        q.type || 'mcq',
+        opt1, opt2, opt3, opt4,
+        correctIdx,
+        q.correctAnswer !== undefined ? q.correctAnswer : correctIdx,
+        q.difficulty || 'medium',
+        q.marks || 1,
+        q.explanation || '',
+        q.createdBy || '',
+        q.createdAt || now
+      ]);
+      
+      addedIds.push(id);
+    }
+
+    if (assessmentId && addedIds.length > 0) {
+      var assSheet = getSheet('assessments');
+      ensureHeaders(assSheet, ASM_HEADERS);
+      var assRowNum = findRowById(assSheet, 0, assessmentId);
+      if (assRowNum !== -1) {
+        var assRow = assSheet.getRange(assRowNum, 1, 1, ASM_HEADERS.length).getValues()[0];
+        var qList = [];
+        try {
+          qList = typeof assRow[9] === 'string' ? JSON.parse(assRow[9]) : (assRow[9] || []);
+        } catch(e) {}
+        if (!Array.isArray(qList)) qList = [];
+        
+        addedIds.forEach(function(id) {
+          if (qList.indexOf(id) === -1) {
+            qList.push(id);
+          }
+        });
+        
+        assRow[9] = JSON.stringify(qList);
+        assRow[13] = new Date().toISOString();
+        assSheet.getRange(assRowNum, 1, 1, assRow.length).setValues([assRow]);
+      }
+    }
+
+    return jsonResponse({ success: true, addedIds: addedIds });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── ASSIGNMENTS ──────────────────────────────────────────────
@@ -461,7 +631,8 @@ var RES_HEADERS = [
   'totalScore', 'totalMarks', 'percentage', 'passed',
   'status', 'violationCount', 'completionTime',
   'startedAt', 'submittedAt', 'autoSubmitReason', 'submissionType',
-  'correctAnswers', 'wrongAnswers', 'createdAt', 'answers'
+  'correctAnswers', 'wrongAnswers', 'createdAt', 'answers',
+  'examStarted', 'examCompleted', 'startTime', 'endTime'
 ];
 
 function startExam(body) {
@@ -485,7 +656,11 @@ function startExam(body) {
       0, 0, 0, 'false',
       'in-progress', 0, 0,
       body.startedAt || now,
-      '', '', '', 0, 0, now, '[]'
+      '', '', '', 0, 0, now, '[]',
+      body.examStarted !== undefined ? body.examStarted.toString() : 'true',
+      'false',
+      body.startTime || now,
+      ''
     ]);
 
     return jsonResponse({ success: true, _id: id });
@@ -530,7 +705,11 @@ function submitResult(body) {
         body.correctAnswers || 0,
         body.wrongAnswers || 0,
         now,
-        body.answers || '[]'
+        body.answers || '[]',
+        body.examStarted !== undefined ? body.examStarted.toString() : 'true',
+        body.examCompleted !== undefined ? body.examCompleted.toString() : 'true',
+        body.startTime || body.startedAt || now,
+        body.endTime || body.submittedAt || now
       ]);
     } else {
       var row = sheet.getRange(rowNum, 1, 1, RES_HEADERS.length).getValues()[0];
@@ -543,10 +722,13 @@ function submitResult(body) {
       row[13] = body.completionTime  !== undefined ? body.completionTime  : row[13];
       row[15] = body.submittedAt     || now;
       row[16] = body.autoSubmitReason !== undefined ? (body.autoSubmitReason || '') : row[16];
-      row[17] = body.submissionType  || row[17] || 'Manual';
       row[18] = body.correctAnswers  !== undefined ? body.correctAnswers  : row[18];
       row[19] = body.wrongAnswers    !== undefined ? body.wrongAnswers    : row[19];
       row[21] = body.answers         !== undefined ? (typeof body.answers === 'object' ? JSON.stringify(body.answers) : body.answers) : row[21];
+      row[22] = body.examStarted     !== undefined ? body.examStarted.toString() : row[22] || '';
+      row[23] = body.examCompleted   !== undefined ? body.examCompleted.toString() : row[23] || '';
+      row[24] = body.startTime       !== undefined ? body.startTime : row[24] || '';
+      row[25] = body.endTime         !== undefined ? body.endTime : row[25] || '';
       sheet.getRange(rowNum, 1, 1, row.length).setValues([row]);
     }
 

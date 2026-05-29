@@ -11,6 +11,172 @@ import socket from '../../services/socket';
 const TYPES = ['mcq', 'multiple-select', 'true-false', 'coding'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
+const QuestionCard = React.memo(({ q, i, triggerDelete }) => (
+  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i * 0.03, 0.5) }}
+    className="card" style={{ marginBottom: 12, padding: '18px 24px' }}
+  >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary-light)', minWidth: 28 }}>Q{i + 1}</span>
+          <span className={`badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}`}>{q.difficulty}</span>
+          <span className="badge badge-primary">{q.type}</span>
+          <span className="badge badge-info">{q.marks} marks</span>
+          <CopyButton text={`Question:\n${q.title}\n\nOptions:\n${q.options?.map((o, idx) => `${String.fromCharCode(65 + idx)}) ${o.text}${o.isCorrect ? ' (Correct)' : ''}`).join('\n')}\n\nMarks: ${q.marks}`} />
+        </div>
+        <p style={{ fontSize: 15, color: 'var(--text-primary)', fontWeight: 500, marginBottom: 10 }}>{q.title}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {Array.isArray(q.options) && q.options.length > 0 ? (
+            q.options.map((opt, oi) => (
+              <div key={oi} style={{
+                padding: '8px 12px', borderRadius: 8, fontSize: 13,
+                background: opt.isCorrect ? 'rgba(16,185,129,0.1)' : 'var(--bg-surface)',
+                border: `1px solid ${opt.isCorrect ? 'rgba(16,185,129,0.3)' : 'var(--border-light)'}`,
+                color: opt.isCorrect ? '#6ee7b7' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontWeight: 'bold', color: '#c084fc', marginRight: 4 }}>
+                  {String.fromCharCode(65 + oi)}.
+                </span>
+                {opt.isCorrect && <CheckCircle size={14} />}
+                {opt.text || opt}
+              </div>
+            ))
+          ) : (
+            <p style={{ fontSize: 12, color: 'var(--danger)', gridColumn: 'span 2' }}>
+              ⚠️ Options missing or incorrect format for this question
+            </p>
+          )}
+        </div>
+      </div>
+      <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(q._id)}>
+        <Trash2 size={15} color="var(--danger)" />
+      </button>
+    </div>
+  </motion.div>
+));
+
+const GeneratedQuestionCard = React.memo(({ q, qIdx, onUpdateQuestion, onUpdateOption, onUpdateDifficulty, onUpdateMarks, onDelete }) => {
+  return (
+    <div
+      style={{
+        padding: 20,
+        borderRadius: 12,
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-light)',
+        marginBottom: 20,
+        position: 'relative'
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => onDelete(qIdx)}
+        style={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          background: 'none',
+          border: 'none',
+          color: 'var(--danger)',
+          cursor: 'pointer'
+        }}
+        title="Discard Question"
+      >
+        <Trash2 size={18} />
+      </button>
+
+      <div className="form-group" style={{ paddingRight: 32 }}>
+        <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary-light)' }}>Question {qIdx + 1}</label>
+        <textarea
+          className="form-input"
+          value={q.title}
+          onChange={e => onUpdateQuestion(qIdx, 'title', e.target.value)}
+          rows={2}
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div className="form-group">
+          <label className="form-label">Difficulty</label>
+          <select
+            className="form-input form-select"
+            value={q.difficulty}
+            onChange={e => onUpdateDifficulty(qIdx, e.target.value)}
+          >
+            {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Marks</span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Min: 1, Max: 100</span>
+          </label>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            {[1, 2, 5, 10].map(m => (
+              <button
+                key={m}
+                type="button"
+                className="btn"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 11,
+                  background: q.marks === m ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
+                  color: q.marks === m ? '#fff' : 'var(--text-secondary)',
+                  border: `1px solid ${q.marks === m ? 'var(--primary)' : 'var(--border-light)'}`,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onClick={() => onUpdateMarks(qIdx, m)}
+              >
+                {m} {m === 1 ? 'Mark' : 'Marks'}
+              </button>
+            ))}
+          </div>
+          <input
+            className="form-input"
+            type="number"
+            value={q.marks}
+            onChange={e => onUpdateMarks(qIdx, Math.max(1, Math.min(100, +e.target.value)))}
+            min={1}
+            max={100}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="form-group" style={{ marginBottom: 0 }}>
+        <label className="form-label" style={{ fontWeight: 600 }}>Options (select the single correct answer)</label>
+        {q.options.map((opt, oIdx) => (
+          <div key={oIdx} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
+            <input
+              type="radio"
+              name={`correct-gen-${qIdx}`}
+              checked={opt.isCorrect}
+              onChange={() => onUpdateOption(qIdx, oIdx, 'isCorrect', true)}
+              style={{ accentColor: 'var(--primary)', width: 16, height: 16 }}
+            />
+            <input
+              className="form-input"
+              value={opt.text}
+              onChange={e => onUpdateOption(qIdx, oIdx, 'text', e.target.value)}
+              placeholder={`Option ${oIdx + 1}`}
+              style={{ flex: 1, marginBottom: 0 }}
+              required
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+const emptyForm = {
+  title: '', type: 'mcq', marks: 1, difficulty: 'medium',
+  options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }],
+};
+
 export default function AdminQuestions() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
@@ -20,28 +186,40 @@ export default function AdminQuestions() {
   const [showModal, setShowModal] = useState(false);
   const [showAutoGenerateModal, setShowAutoGenerateModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState([]);
-  const [form, setForm] = useState({
-    title: '', type: 'mcq', marks: 1, difficulty: 'medium',
-    options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }],
-  });
+  const [form, setForm] = useState(emptyForm);
+
+  const lastLoadedIdRef = React.useRef(null);
 
   const load = useCallback(async () => {
     try {
-      const [qRes, aRes] = await Promise.all([
-        api.get(`/questions?assessmentId=${assessmentId}`),
-        api.get(`/assessments/${assessmentId}`),
-      ]);
-      const sortedQ = (qRes.data.questions || []).sort((a, b) =>
+      const aRes = await api.get(`/assessments/${assessmentId}`);
+      const assessment = aRes.data.assessment;
+      const uniqueQuestions = Array.from(
+        new Map(
+          (assessment.questions || []).map(q => [q._id || q.title || q.question, q])
+        ).values()
+      );
+      const sortedQ = uniqueQuestions.sort((a, b) =>
         String(a.title || '').localeCompare(String(b.title || ''), undefined, { numeric: true, sensitivity: 'base' })
       );
       setQuestions(sortedQ);
-      setAssessment(aRes.data.assessment);
+      setAssessment(assessment);
     } catch { toast.error('Failed to load'); }
     setLoading(false);
   }, [assessmentId]);
 
   useEffect(() => {
+    // Reset state only when switching to a completely different assessment
+    if (lastLoadedIdRef.current !== assessmentId) {
+      setQuestions([]);
+      setAssessment(null);
+      setGeneratedQuestions([]); // Clear previous generated questions here too!
+      setLoading(true);
+      lastLoadedIdRef.current = assessmentId;
+    }
+    
     load();
     // Live Socket sync hook
     socket.on('db:sync', () => {
@@ -51,7 +229,14 @@ export default function AdminQuestions() {
     return () => {
       socket.off('db:sync');
     };
-  }, [load]);
+  }, [assessmentId, load]);
+
+
+
+  const handleAddQuestion = () => {
+    setForm(emptyForm);
+    setShowModal(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,30 +244,35 @@ export default function AdminQuestions() {
       await api.post('/questions', { ...form, assessmentId, assessment: assessmentId });
       toast.success('Question added');
       setShowModal(false);
-      setForm({ title: '', type: 'mcq', marks: 1, difficulty: 'medium', options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }] });
-      load();
+      setForm(emptyForm);
+      localStorage.removeItem('admin_assessments_list'); // Remove stale cache
+      await load(); // Reload fresh data from backend
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const triggerDelete = (id) => {
+  const triggerDelete = useCallback((id) => {
     setDeleteTarget(id);
-  };
+  }, []);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+    const targetId = deleteTarget;
     setDeleteLoading(true);
+    setDeleteTarget(null);
+
     try {
-      await api.delete(`/questions/${deleteTarget}`);
+      await api.delete(`/questions/${targetId}`);
       toast.success('Question permanently deleted');
-      setDeleteTarget(null);
-      load();
+      localStorage.removeItem('admin_assessments_list'); // Remove stale cache
+      await load(); // Reload fresh data from backend
     } catch {
       toast.error('Failed to delete question');
+    } finally {
+      setDeleteLoading(false);
     }
-    setDeleteLoading(false);
   };
 
   const updateOption = (idx, field, value) => {
@@ -97,6 +287,7 @@ export default function AdminQuestions() {
 
   // Upload Document and Automatically Generate MCQs
   const handleAutoGenerateUpload = () => {
+    setGeneratedQuestions([]); // Clear any previous imports from state immediately
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.docx,.txt';
@@ -151,16 +342,48 @@ export default function AdminQuestions() {
     input.click();
   };
 
-  const handleUpdateGeneratedQuestion = (idx, field, value) => {
-    const list = [...generatedQuestions];
-    list[idx] = { ...list[idx], [field]: value };
-    setGeneratedQuestions(list);
-  };
+  const handleUpdateGeneratedQuestion = useCallback((idx, field, value) => {
+    setGeneratedQuestions(prev => {
+      const list = [...prev];
+      list[idx] = { ...list[idx], [field]: value };
+      return list;
+    });
+  }, []);
 
-  const handleDeleteGeneratedQuestion = (idx) => {
-    const list = generatedQuestions.filter((_, i) => i !== idx);
-    setGeneratedQuestions(list);
-  };
+  const handleDeleteGeneratedQuestion = useCallback((idx) => {
+    setGeneratedQuestions(prev => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const handleUpdateGeneratedOption = useCallback((qIdx, oIdx, field, value) => {
+    setGeneratedQuestions(prev => {
+      const list = [...prev];
+      const opts = [...list[qIdx].options];
+      if (field === 'isCorrect') {
+        opts.forEach((o, i) => { o.isCorrect = i === oIdx; });
+      } else {
+        opts[oIdx] = { ...opts[oIdx], [field]: value };
+      }
+      list[qIdx] = { ...list[qIdx], options: opts };
+      return list;
+    });
+  }, []);
+
+  const handleUpdateGeneratedDifficulty = useCallback((qIdx, diff) => {
+    setGeneratedQuestions(prev => {
+      const list = [...prev];
+      const marks = diff === 'easy' ? 1 : diff === 'medium' ? 2 : 3;
+      list[qIdx] = { ...list[qIdx], difficulty: diff, marks };
+      return list;
+    });
+  }, []);
+
+  const handleUpdateGeneratedMarks = useCallback((qIdx, marksValue) => {
+    setGeneratedQuestions(prev => {
+      const list = [...prev];
+      list[qIdx] = { ...list[qIdx], marks: marksValue };
+      return list;
+    });
+  }, []);
 
   const handleSaveGeneratedQuestions = async () => {
     if (generatedQuestions.length === 0) {
@@ -188,48 +411,45 @@ export default function AdminQuestions() {
       }
     }
 
+    setIsSaving(true);
+    const toastId = toast.loading('Saving and syncing questions to Google Sheets...');
+
     try {
-      toast.loading('Saving questions to assessment...', { id: 'save-mcq' });
       await api.post('/questions/bulk', {
         questions: generatedQuestions,
         assessmentId
       });
-      toast.dismiss('save-mcq');
-      toast.success('Successfully saved all generated questions!');
+      toast.success('Successfully saved all questions to Google Sheets!', { id: toastId });
+      localStorage.removeItem('admin_assessments_list'); // Remove stale cache
       setShowAutoGenerateModal(false);
-      load();
-    } catch {
-      toast.dismiss('save-mcq');
-      toast.error('Failed to save questions');
+      setGeneratedQuestions([]);
+      
+      setLoading(true); // Trigger skeleton state to show visual load!
+      await load(); 
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save questions', { id: toastId });
+    } finally {
+      setIsSaving(false);
     }
   };
-// Update generated question option
-const handleUpdateGeneratedOption = (qIdx, oIdx, field, value) => {
-  const list = [...generatedQuestions];
-  const opts = [...list[qIdx].options];
-  if (field === 'isCorrect') {
-    opts.forEach((o, i) => { o.isCorrect = i === oIdx; });
-  } else {
-    opts[oIdx] = { ...opts[oIdx], [field]: value };
-  }
-  list[qIdx].options = opts;
-  setGeneratedQuestions(list);
-};
-// Update generated question difficulty
-const handleUpdateGeneratedDifficulty = (qIdx, diff) => {
-  const list = [...generatedQuestions];
-  const marks = diff === 'easy' ? 1 : diff === 'medium' ? 2 : 3;
-  list[qIdx] = { ...list[qIdx], difficulty: diff, marks };
-  setGeneratedQuestions(list);
-};
-// Update generated question marks
-const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
-  const list = [...generatedQuestions];
-  list[qIdx] = { ...list[qIdx], marks: marksValue };
-  setGeneratedQuestions(list);
-};
 
-  if (loading) return <div className="loading-center"><div className="loading-spinner" /></div>;
+  const SkeletonQuestionCard = () => (
+    <div className="card" style={{ marginBottom: 12, padding: '18px 24px', animation: 'pulse 1.5s infinite ease-in-out' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div style={{ height: 20, width: 30, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+        <div style={{ height: 20, width: 60, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+        <div style={{ height: 20, width: 50, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+        <div style={{ height: 20, width: 70, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
+      </div>
+      <div style={{ height: 16, width: '70%', backgroundColor: 'var(--border-light)', borderRadius: 4, marginBottom: 16 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {[...Array(4)].map((_, i) => (
+          <div key={i} style={{ height: 36, width: '100%', backgroundColor: 'var(--border-light)', borderRadius: 8 }} />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -253,54 +473,24 @@ const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
             {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
             Import Document
           </button>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={18} /> Add Question</button>
+          <button className="btn btn-primary" onClick={handleAddQuestion}><Plus size={18} /> Add Question</button>
         </div>
       </div>
 
       <div style={{ marginTop: 24 }}>
-        {questions.map((q, i) => (
-          <motion.div key={q._id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-            className="card" style={{ marginBottom: 12, padding: '18px 24px' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary-light)', minWidth: 28 }}>Q{i + 1}</span>
-                  <span className={`badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}`}>{q.difficulty}</span>
-                  <span className="badge badge-primary">{q.type}</span>
-                  <span className="badge badge-info">{q.marks} marks</span>
-                  <CopyButton text={`Question:\n${q.title}\n\nOptions:\n${q.options?.map((o, idx) => `${String.fromCharCode(65 + idx)}) ${o.text}${o.isCorrect ? ' (Correct)' : ''}`).join('\n')}\n\nMarks: ${q.marks}`} />
-                </div>
-                <p style={{ fontSize: 15, color: 'var(--text-primary)', fontWeight: 500, marginBottom: 10 }}>{q.title}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {q.options?.map((opt, oi) => (
-                    <div key={oi} style={{
-                      padding: '8px 12px', borderRadius: 8, fontSize: 13,
-                      background: opt.isCorrect ? 'rgba(16,185,129,0.1)' : 'var(--bg-surface)',
-                      border: `1px solid ${opt.isCorrect ? 'rgba(16,185,129,0.3)' : 'var(--border-light)'}`,
-                      color: opt.isCorrect ? '#6ee7b7' : 'var(--text-secondary)',
-                      display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      {opt.isCorrect && <CheckCircle size={14} />}
-                      {opt.text}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => triggerDelete(q._id)}>
-                <Trash2 size={15} color="var(--danger)" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
+        {loading ? (
+          [...Array(4)].map((_, i) => <SkeletonQuestionCard key={i} />)
+        ) : questions?.length > 0 ? (
+          questions.map((q, i) => (
+            <QuestionCard key={`${q._id}-${q.title || q.question}`} q={q} i={i} triggerDelete={triggerDelete} />
+          ))
+        ) : (
+          <div className="empty-state" style={{ marginTop: 40 }}>
+            <h3>No questions yet</h3>
+            <p>Add questions manually, import JSON, or generate with AI using Upload Document!</p>
+          </div>
+        )}
       </div>
-
-      {questions.length === 0 && (
-        <div className="empty-state" style={{ marginTop: 40 }}>
-          <h3>No questions yet</h3>
-          <p>Add questions manually, import JSON, or generate with AI using Upload Document!</p>
-        </div>
-      )}
 
       {/* Manual Add Question Modal */}
       <AnimatePresence>
@@ -469,118 +659,16 @@ const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
                 </p>
 
                 {generatedQuestions.map((q, qIdx) => (
-                  <div
-                    key={qIdx}
-                    style={{
-                      padding: 20,
-                      borderRadius: 12,
-                      background: 'var(--bg-surface)',
-                      border: '1px solid var(--border-light)',
-                      marginBottom: 20,
-                      position: 'relative'
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteGeneratedQuestion(qIdx)}
-                      style={{
-                        position: 'absolute',
-                        top: 16,
-                        right: 16,
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--danger)',
-                        cursor: 'pointer'
-                      }}
-                      title="Discard Question"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-
-                    <div className="form-group" style={{ paddingRight: 32 }}>
-                      <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary-light)' }}>Question {qIdx + 1}</label>
-                      <textarea
-                        className="form-input"
-                        value={q.title}
-                        onChange={e => handleUpdateGeneratedQuestion(qIdx, 'title', e.target.value)}
-                        rows={2}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                      <div className="form-group">
-                        <label className="form-label">Difficulty</label>
-                        <select
-                          className="form-input form-select"
-                          value={q.difficulty}
-                          onChange={e => handleUpdateGeneratedDifficulty(qIdx, e.target.value)}
-                        >
-                          {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>Marks</span>
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Min: 1, Max: 100</span>
-                        </label>
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                          {[1, 2, 5, 10].map(m => (
-                            <button
-                              key={m}
-                              type="button"
-                              className="btn"
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: 11,
-                                background: q.marks === m ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
-                                color: q.marks === m ? '#fff' : 'var(--text-secondary)',
-                                border: `1px solid ${q.marks === m ? 'var(--primary)' : 'var(--border-light)'}`,
-                                borderRadius: 6,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                              }}
-                              onClick={() => handleUpdateGeneratedMarks(qIdx, m)}
-                            >
-                              {m} {m === 1 ? 'Mark' : 'Marks'}
-                            </button>
-                          ))}
-                        </div>
-                        <input
-                          className="form-input"
-                          type="number"
-                          value={q.marks}
-                          onChange={e => handleUpdateGeneratedMarks(qIdx, Math.max(1, Math.min(100, +e.target.value)))}
-                          min={1}
-                          max={100}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontWeight: 600 }}>Options (select the single correct answer)</label>
-                      {q.options.map((opt, oIdx) => (
-                        <div key={oIdx} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
-                          <input
-                            type="radio"
-                            name={`correct-gen-${qIdx}`}
-                            checked={opt.isCorrect}
-                            onChange={() => handleUpdateGeneratedOption(qIdx, oIdx, 'isCorrect', true)}
-                            style={{ accentColor: 'var(--primary)', width: 16, height: 16 }}
-                          />
-                          <input
-                            className="form-input"
-                            value={opt.text}
-                            onChange={e => handleUpdateGeneratedOption(qIdx, oIdx, 'text', e.target.value)}
-                            placeholder={`Option ${oIdx + 1}`}
-                            style={{ flex: 1, marginBottom: 0 }}
-                            required
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <GeneratedQuestionCard
+                    key={`${qIdx}-${q.title}`}
+                    q={q}
+                    qIdx={qIdx}
+                    onUpdateQuestion={handleUpdateGeneratedQuestion}
+                    onUpdateOption={handleUpdateGeneratedOption}
+                    onUpdateDifficulty={handleUpdateGeneratedDifficulty}
+                    onUpdateMarks={handleUpdateGeneratedMarks}
+                    onDelete={handleDeleteGeneratedQuestion}
+                  />
                 ))}
 
                 {generatedQuestions.length === 0 && (
@@ -601,16 +689,16 @@ const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
                   background: 'var(--bg-surface)'
                 }}
               >
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAutoGenerateModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAutoGenerateModal(false)} disabled={isSaving}>Cancel</button>
                 <button
                   type="button"
                   className="btn btn-primary"
                   onClick={handleSaveGeneratedQuestions}
-                  disabled={generatedQuestions.length === 0}
+                  disabled={generatedQuestions.length === 0 || isSaving}
                   style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                 >
-                  <Save size={16} />
-                  Save all {generatedQuestions.length} Questions
+                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  {isSaving ? `Saving ${generatedQuestions.length} Questions...` : `Save all ${generatedQuestions.length} Questions`}
                 </button>
               </div>
             </motion.div>
@@ -622,7 +710,7 @@ const handleUpdateGeneratedMarks = (qIdx, marksValue) => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         title="Delete Question"
-        message="Are you sure you want to permanently delete this MCQ? This will completely remove it from MongoDB and Google Sheets databases."
+        message="Are you sure you want to permanently delete this MCQ? This will completely remove it from Google Sheets database."
         loading={deleteLoading}
       />
     </div>

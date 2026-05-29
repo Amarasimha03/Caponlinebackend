@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, memo } from 'react';
+import React, { useEffect, useState, useRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, User, Camera, CameraOff, Maximize2, X, Activity, ShieldAlert, Monitor } from 'lucide-react';
 import useMonitoringStore from '../../store/monitoringStore';
@@ -141,6 +141,38 @@ export default function AdminMonitoring() {
     }
   }, [selectedCandidate, activeExams]);
 
+  const violationFeed = useMemo(() => {
+    return violations.length > 0 ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {violations.map((v, i) => (
+          <motion.div key={i} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            style={{
+              padding: '12px 14px', background: 'rgba(255,255,255,0.01)',
+              borderRadius: 12, border: '1px solid var(--border-light)'
+            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{v.employeeName}</span>
+              <span className="badge badge-danger" style={{ fontSize: 10, textTransform: 'uppercase' }}>
+                {v.type?.replace(/-/g, ' ')}
+              </span>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
+              {v.description}
+            </p>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+              {new Date(v.timestamp).toLocaleTimeString()}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    ) : (
+      <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
+        <ShieldAlert size={32} style={{ color: 'var(--border)', marginBottom: 8 }} />
+        <p style={{ fontSize: 12 }}>No violations detected during this session.</p>
+      </div>
+    );
+  }, [violations]);
+
   return (
     <div style={{ paddingBottom: 40 }}>
       {/* Header banner */}
@@ -215,35 +247,7 @@ export default function AdminMonitoring() {
           </h2>
 
           <div className="card" style={{ padding: 20, maxHeight: 580, overflowY: 'auto' }}>
-            {violations.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {violations.map((v, i) => (
-                  <motion.div key={i} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-                    style={{
-                      padding: '12px 14px', background: 'rgba(255,255,255,0.01)',
-                      borderRadius: 12, border: '1px solid var(--border-light)'
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{v.employeeName}</span>
-                      <span className="badge badge-danger" style={{ fontSize: 10, textTransform: 'uppercase' }}>
-                        {v.type?.replace(/-/g, ' ')}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
-                      {v.description}
-                    </p>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
-                      {new Date(v.timestamp).toLocaleTimeString()}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
-                <ShieldAlert size={32} style={{ color: 'var(--border)', marginBottom: 8 }} />
-                <p style={{ fontSize: 12 }}>No violations detected during this session.</p>
-              </div>
-            )}
+            {violationFeed}
           </div>
         </div>
       </div>
