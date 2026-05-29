@@ -9,7 +9,7 @@ git status >nul 2>&1
 if errorlevel 1 (
     echo Git repository not found. Initializing...
     git init
-    git remote add origin https://github.com/Amarasimha03/onlinetest
+    git remote add origin https://github.com/Amarasimha03/caponlinetest
 )
 
 echo.
