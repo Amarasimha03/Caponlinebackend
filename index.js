@@ -630,15 +630,17 @@ async function startServer() {
     console.log(`🚀 Server running on port ${PORT}`);
 
     // ── Keep-alive: self-ping every 14 min to prevent Render free tier sleep ──
-    const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://127.0.0.1:${PORT}`;
-    setInterval(async () => {
-      try {
-        await fetch(`${SELF_URL}/health`);
-        console.log('💓 Keep-alive ping sent');
-      } catch (e) {
-        console.warn('Keep-alive ping failed:', e.message);
-      }
-    }, 14 * 60 * 1000); // every 14 minutes
+    const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+    if (SELF_URL) {
+      setInterval(async () => {
+        try {
+          await fetch(`${SELF_URL}/health`);
+          console.log('💓 Keep-alive ping sent');
+        } catch (e) {
+          console.warn('Keep-alive ping failed:', e.message);
+        }
+      }, 14 * 60 * 1000); // every 14 minutes
+    }
   });
 }
 
