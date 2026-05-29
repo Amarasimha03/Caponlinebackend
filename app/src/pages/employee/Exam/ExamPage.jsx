@@ -43,7 +43,7 @@ export default function ExamPage() {
 
   // Managers/Hooks
   const { videoRef, streamRef, webcamReady, startWebcam, stopWebcam } = useCamera(user);
-  const { screenStreamRef, screenReady, startScreenShare, stopScreenShare } = useScreenShare();
+  const { screenStreamRef, screenReady, screenError, startScreenShare, stopScreenShare } = useScreenShare();
 
   const broadcastExamStart = useCallback(() => {
     if (user?._id) {
@@ -129,7 +129,7 @@ export default function ExamPage() {
     if (submitting) return;
     setSubmitting(true);
     setPhase('submitted');
-    
+
     try {
       const formattedAnswers = Object.keys(answers).map(qId => ({
         questionId: qId,
@@ -159,8 +159,8 @@ export default function ExamPage() {
       await cleanupExamSession({
         stopCamera: stopWebcam,
         stopScreenShare: stopScreenShare,
-        stopTimer: () => {}, // Handled inherently or passed if TimerManager is refactored further
-        disconnectSocket: () => {}, // Keep alive or offload appropriately
+        stopTimer: () => { }, // Handled inherently or passed if TimerManager is refactored further
+        disconnectSocket: () => { }, // Keep alive or offload appropriately
         clearLocalStorage: () => {
           localStorage.removeItem(LS_EXAM_KEY);
           localStorage.removeItem('employee_assessments_cache');
@@ -174,7 +174,8 @@ export default function ExamPage() {
         navigate("/employee/dashboard", { replace: true });
       }
     }
-  }, [submitting, answers, violations, resultId, assessmentId, user, stopWebcam, stopScreenShare, navigate, LS_EXAM_KEY]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitting, answers, violations, resultId, assessmentId, user, stopWebcam, stopScreenShare, logout, navigate, LS_EXAM_KEY]);
 
   const { timer, setTimer } = useExamTimer({
     initialTimer: assessment?.duration ? assessment.duration * 60 : 1800,
@@ -262,13 +263,13 @@ export default function ExamPage() {
       toast.error("Webcam and Screen share must be active before starting the exam.");
       return;
     }
-    
+
     setDbSaving(true);
     setInitStatus('Entering fullscreen mode...');
     try {
       await enterFullscreen();
       setInitStatus('Saving exam start event to database...');
-      
+
       const { data } = await api.post(`/assessments/start`, { assessmentId });
       if (data.success) {
         setResultId(data.result?._id || data.resultId);
@@ -295,7 +296,7 @@ export default function ExamPage() {
   if (phase === 'initializing') {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', color: '#fff', padding: 20 }}>
-        
+
         {/* Camera Preview */}
         {webcamReady ? (
           <div style={{ position: 'relative', width: 320, height: 200, borderRadius: 16, overflow: 'hidden', background: '#000', border: '2.5px solid var(--primary)', marginBottom: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
@@ -330,7 +331,7 @@ export default function ExamPage() {
               </span>
             </div>
             {!screenReady && (
-              <button 
+              <button
                 onClick={handleScreenShareEnable}
                 className="btn btn-primary btn-sm"
                 style={{ width: '100%', marginTop: 6, justifyContent: 'center', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 700 }}
@@ -338,17 +339,20 @@ export default function ExamPage() {
                 Enable Screen Sharing
               </button>
             )}
+            {!screenReady && screenError && (
+              <p style={{ color: '#f87171', fontSize: 12, marginTop: 6, textAlign: 'center' }}>{screenError}</p>
+            )}
           </div>
         </div>
 
         {/* Action Button Controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 360, marginTop: 20 }}>
           {webcamReady && screenReady && (
-            <button 
+            <button
               onClick={startExamConfirmed}
               disabled={dbSaving}
-              className="btn btn-success btn-lg" 
-              style={{ 
+              className="btn btn-success btn-lg"
+              style={{
                 width: '100%', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none',
                 boxShadow: '0 0 20px rgba(16,185,129,0.3)', color: '#fff', fontSize: 16, fontWeight: 800,
                 padding: '14px 20px', borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s', justifyContent: 'center'
@@ -358,18 +362,18 @@ export default function ExamPage() {
             </button>
           )}
 
-          <button 
+          <button
             onClick={async () => {
               await cleanupExamSession({ stopCamera: stopWebcam, stopScreenShare: stopScreenShare, exitFullscreen });
               setPhase('setup');
-            }} 
-            className="btn btn-sm" 
-            style={{ 
-              background: 'rgba(239,68,68,0.1)', color: '#ef4444', 
-              border: '1px solid rgba(239,68,68,0.2)', padding: '10px 24px', 
+            }}
+            className="btn btn-sm"
+            style={{
+              background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+              border: '1px solid rgba(239,68,68,0.2)', padding: '10px 24px',
               borderRadius: 10, cursor: 'pointer', fontSize: 14, transition: 'all 0.2s', width: '100%', justifyContent: 'center'
-            }} 
-            onMouseEnter={e => e.currentTarget.style.background = '#ef4444'} 
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#ef4444'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
           >
             Cancel & Go Back
