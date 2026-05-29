@@ -168,14 +168,10 @@ export default function ExamPage() {
         },
         exitFullscreen: exitFullscreen
       });
-      
-      if (reason === 'Completed' || reason === 'Time Expired') {
+      if (reason === 'Completed') {
         navigate(`/employee/result/${assessmentId}`, { replace: true });
-      } else if (reason === 'User Cancelled Exam') {
-        navigate("/employee/dashboard", { replace: true });
       } else {
-        logout();
-        navigate("/exam-terminated", { replace: true });
+        navigate("/employee/dashboard", { replace: true });
       }
     }
   }, [submitting, answers, violations, resultId, assessmentId, user, stopWebcam, stopScreenShare, logout, navigate, LS_EXAM_KEY]);
