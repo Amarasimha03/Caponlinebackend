@@ -20,6 +20,14 @@ const getQuestionCount = (questions) => {
   return 0;
 };
 
+// ✅ Google Sheets returns examCompleted as the string "true", not boolean
+const isExamDone = (a) =>
+  a.status === 'completed' ||
+  a.result?.status === 'submitted' ||
+  a.result?.status === 'auto-submitted' ||
+  a.result?.status === 'completed' ||
+  String(a.result?.examCompleted).toLowerCase() === 'true';
+
 export function MyExamsTable({ loading, assessments, handleViewResult }) {
   const navigate = useNavigate();
 
@@ -67,7 +75,7 @@ export function MyExamsTable({ loading, assessments, handleViewResult }) {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     onClick={() => {
-                      if (a.status === 'completed' || a.result?.examCompleted) {
+                      if (isExamDone(a)) {
                         handleViewResult(a);
                       } else if (a.result?.status === 'in-progress') {
                         // Do nothing
@@ -109,7 +117,7 @@ export function MyExamsTable({ loading, assessments, handleViewResult }) {
                       </span>
                     </td>
                     <td style={{ padding: '20px 24px' }}>
-                      {a.status === 'completed' || a.result?.examCompleted ? (
+                      {isExamDone(a) ? (
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
                           padding: '5px 12px', borderRadius: 99, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)'
@@ -127,7 +135,7 @@ export function MyExamsTable({ loading, assessments, handleViewResult }) {
                       )}
                     </td>
                     <td style={{ padding: '20px 24px' }}>
-                      {a.result?.examCompleted || a.status === 'completed' ? (
+                      {isExamDone(a) ? (
                         <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleViewResult(a); }} style={{ background: 'transparent', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.1)'; e.currentTarget.style.borderColor = '#10b981'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)'; }}>
                           <Eye size={14} /> View Result
                         </button>

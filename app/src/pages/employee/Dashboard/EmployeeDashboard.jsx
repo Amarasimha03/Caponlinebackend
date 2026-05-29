@@ -47,7 +47,7 @@ export default function EmployeeDashboard() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    if (!isBackground && assessments.length === 0) setLoading(true);
+    if (!isBackground) setLoading(true);
 
     try {
       loadAbortController.current.abort();
@@ -68,7 +68,7 @@ export default function EmployeeDashboard() {
       sorted.forEach(a => {
         if (!a.result && a.createdAt) {
           const dateObj = new Date(a.createdAt);
-          const timeStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           notifs.push({
             id: a._id,
             message: `New assessment assigned: ${a.title}`,
@@ -78,17 +78,17 @@ export default function EmployeeDashboard() {
         }
       });
       setNotifications(notifs);
-      setHasUnread(prev => notifs.length > 0 ? (showNotif ? false : prev || true) : false);
+      setHasUnread(notifs.length > 0 ? true : false);
 
     } catch (err) {
       if (err.name !== 'CanceledError' && err.message !== 'canceled') {
-        if (!isBackground && assessments.length === 0) toast.error('Failed to load assessments');
+        console.error('[Dashboard] Load failed:', err.message);
       }
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessments.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     load();
@@ -132,8 +132,16 @@ export default function EmployeeDashboard() {
     a.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const completed = filteredAssessments.filter(a => a.status === 'completed' || a.result?.examCompleted);
-  const pending = filteredAssessments.filter(a => a.status !== 'completed' && !a.result?.examCompleted);
+  // ✅ Normalize examCompleted — Google Sheets returns "true" (string), not true (boolean)
+  const isExamCompleted = (a) =>
+    a.status === 'completed' ||
+    a.result?.status === 'submitted' ||
+    a.result?.status === 'auto-submitted' ||
+    a.result?.status === 'completed' ||
+    String(a.result?.examCompleted).toLowerCase() === 'true';
+
+  const completed = filteredAssessments.filter(isExamCompleted);
+  const pending = filteredAssessments.filter(a => !isExamCompleted(a));
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
