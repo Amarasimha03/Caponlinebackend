@@ -35,7 +35,7 @@ const seed = async () => {
       isVerified: true,
       isActive: true,
       loginHistory: [{
-        ip: '127.0.0.1',
+        ip: '8.8.8.8',
         userAgent: 'Seed Script',
         device: 'Server',
         loginAt: new Date(),
@@ -158,7 +158,7 @@ const seed = async () => {
       {
         user: admin._id, action: 'login',
         description: 'System Admin initial seed login',
-        ip: '127.0.0.1', userAgent: 'Seed Script',
+        ip: '8.8.8.8', userAgent: 'Seed Script',
       },
       {
         user: admin._id, action: 'assessment-created',

@@ -16,7 +16,7 @@ export function useCamera(user) {
     setCameraLoading(true);
     setCameraError('');
 
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
       setCameraError('Camera access requires a secure HTTPS connection.');
       setCameraLoading(false);
       cameraRequestingRef.current = false;
