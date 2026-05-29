@@ -33,6 +33,16 @@ function handleRequest(e) {
       }
     }
 
+    // Support urlencoded data payload from Node server
+    if (body.data) {
+      try {
+        var parsedData = JSON.parse(body.data);
+        for (var key in parsedData) {
+          body[key] = parsedData[key];
+        }
+      } catch (err) {}
+    }
+
     switch (action) {
       // ── Bulk DB load (server startup) ──
       case 'getDatabase':       return getDatabase();
