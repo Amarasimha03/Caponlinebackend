@@ -114,14 +114,20 @@ const useMonitoringStore = create((set, get) => ({
 
       pc.ontrack = (event) => {
         console.log(`[MonitoringStore] Received track from ${employeeId}`);
-        const stream = event.streams[0];
+        const track = event.track;
+        if (track.kind !== 'video') return; // Only map video tracks
+
+        pc.videoTracksReceived = (pc.videoTracksReceived || 0) + 1;
+        const stream = event.streams[0] || new MediaStream([track]);
         
         set((state) => {
           const updated = state.activeExams.map((e) => {
             if (e.employeeId === employeeId) {
-              if (!e.cameraStream) {
+              if (pc.videoTracksReceived === 1) {
+                console.log(`[MonitoringStore] Setting camera stream for ${employeeId}`);
                 return { ...e, cameraStream: stream, webrtcConnected: true };
-              } else if (e.cameraStream.id !== stream.id && !e.screenStream) {
+              } else if (pc.videoTracksReceived === 2) {
+                console.log(`[MonitoringStore] Setting screen stream for ${employeeId}`);
                 return { ...e, screenStream: stream, webrtcConnected: true };
               }
             }

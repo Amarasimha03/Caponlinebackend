@@ -564,13 +564,18 @@ async function startServer() {
     });
 
     socket.on('disconnect', () => {
+      let disconnectedEmpId = null;
       for (const [empId, sData] of activeSockets.entries()) {
         if (sData.socketId === socket.id) {
+          disconnectedEmpId = empId;
           activeSockets.delete(empId);
           break;
         }
       }
-      io.to('admin-room').emit('exam:employee-disconnected', { socketId: socket.id });
+      io.to('admin-room').emit('exam:employee-disconnected', { 
+        socketId: socket.id, 
+        employeeId: disconnectedEmpId 
+      });
     });
   });
 
