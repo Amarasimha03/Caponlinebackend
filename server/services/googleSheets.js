@@ -1,6 +1,6 @@
 // Use native fetch (Node 18+)
 
-const CACHE_TTL_MS = 1000; // 1 second
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const cache = new Map();
 
 // Helper to determine if an action should be cached
@@ -89,6 +89,12 @@ exports.querySheets = async (action, payload = {}) => {
     // It's a mutation (create, update, delete). Clear entire cache to guarantee freshness!
     console.log(`[querySheets] 🟡 Mutation detected (${action}). Clearing memory cache.`);
     cache.clear();
+    try {
+      const { clearCache } = require('../middleware/cache');
+      clearCache();
+    } catch (e) {
+      console.error('[querySheets] Failed to clear API Cache:', e.message);
+    }
   }
 
   return parsed;
