@@ -610,9 +610,9 @@ async function startServer() {
           break;
         }
       }
-      io.to('admin-room').emit('exam:employee-disconnected', { 
-        socketId: socket.id, 
-        employeeId: disconnectedEmpId 
+      io.to('admin-room').emit('exam:employee-disconnected', {
+        socketId: socket.id,
+        employeeId: disconnectedEmpId
       });
     });
   });
