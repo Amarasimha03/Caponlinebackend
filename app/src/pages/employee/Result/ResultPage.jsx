@@ -112,7 +112,7 @@ export default function ResultPage() {
           cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#2C2C2A",
         }}
       >
-        Back to {window.location.pathname.startsWith('/admin') ? "Reports" : "Dashboard"}
+        Back to {window.location.pathname.startsWith('/admin') ? "reports" : "dashboard"}
       </button>
     </div>
   );
