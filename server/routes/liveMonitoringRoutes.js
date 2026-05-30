@@ -17,12 +17,12 @@ router.get('/', protect, async (req, res) => {
     const activeSockets = req.app.get('activeSockets') || new Map();
 
     const activeExams = activeResults.map(r => {
-      const e = employees.find(e => String(e._id) === String(r.employee));
-      const a = assessments.find(a => String(a._id) === String(r.assessment));
+      const e = employees.find(e => String(e._id) === String(r.employeeMongoId || r.employee || r.employeeId));
+      const a = assessments.find(a => String(a._id) === String(r.assessmentId || r.assessment));
 
-      const empId = e?._id ? String(e._id) : String(r.employee);
+      const empId = e?._id ? String(e._id) : String(r.employeeMongoId || r.employee || r.employeeId || '');
       const socketData = activeSockets.get(empId);
-      const isCorrectExam = socketData && String(socketData.examId) === String(a?._id || r.assessment);
+      const isCorrectExam = socketData && String(socketData.examId) === String(a?._id || r.assessmentId || r.assessment);
 
       let sm = {};
       try { sm = typeof r.screenMonitoring === 'string' ? JSON.parse(r.screenMonitoring) : (r.screenMonitoring || {}); } catch(e){}
@@ -30,7 +30,7 @@ router.get('/', protect, async (req, res) => {
       return {
         employeeId: empId,
         employeeName: e?.fullName || r.employeeName || 'Candidate',
-        assessmentId: a?._id || r.assessment || '',
+        assessmentId: a?._id || r.assessmentId || r.assessment || '',
         assessmentTitle: a?.title || 'Exam',
         violationCount: r.violationCount || 0,
         startedAt: r.startedAt,
