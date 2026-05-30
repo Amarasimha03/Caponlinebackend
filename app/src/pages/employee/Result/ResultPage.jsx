@@ -105,14 +105,14 @@ export default function ResultPage() {
         {error || "No result available"}
       </p>
       <button
-        onClick={() => navigate(employeeId ? "/admin/dashboard" : "/employee/dashboard")}
+        onClick={() => navigate(window.location.pathname.startsWith('/admin') ? "/admin/results" : "/employee/dashboard")}
         style={{
           marginTop: 20, padding: "10px 24px", borderRadius: 10,
           border: "1px solid #D3D1C7", background: "#fff",
           cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#2C2C2A",
         }}
       >
-        Back to Dashboard
+        Back to {window.location.pathname.startsWith('/admin') ? "Reports" : "Dashboard"}
       </button>
     </div>
   );

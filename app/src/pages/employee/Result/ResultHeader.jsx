@@ -5,6 +5,8 @@ export function ResultHeader({
   navigate, employeeId, handleCopyResult,
   passed, scorePercent, exam, employee, submittedAt, formatDate,
 }) {
+  const isAdmin = window.location.pathname.startsWith('/admin');
+
   return (
     <div style={{
       background: passed ? '#d4edda' : '#fde8e8',
@@ -25,7 +27,7 @@ export function ResultHeader({
 
       {/* Back button */}
       <button
-        onClick={() => navigate(employeeId ? '/admin/dashboard' : '/employee/dashboard')}
+        onClick={() => navigate(isAdmin ? '/admin/results' : '/employee/dashboard')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 5,
           fontSize: 12, color: passed ? '#4a7a2a' : '#a03030',
@@ -34,7 +36,7 @@ export function ResultHeader({
         }}
       >
         <ArrowLeft size={13} strokeWidth={2} />
-        Back to dashboard
+        Back to {isAdmin ? 'reports' : 'dashboard'}
       </button>
 
       {/* Header row */}
