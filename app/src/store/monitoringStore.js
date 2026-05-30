@@ -183,7 +183,10 @@ const useMonitoringStore = create((set, get) => ({
 
         // ✅ Stream-identity-based assignment (fixes black screen)
         // We use a registry of seen stream IDs to determine camera vs. screen.
-        const stream = event.streams[0] || new MediaStream([track]);
+        const stream = event.streams[0] || new MediaStream();
+        if (stream.getVideoTracks().length === 0 || !stream.getVideoTracks().includes(track)) {
+          stream.addTrack(track);
+        }
         const registry = peerStreamRegistry[employeeId];
         const streamIds = peerStreamIdMap[employeeId] || {};
 

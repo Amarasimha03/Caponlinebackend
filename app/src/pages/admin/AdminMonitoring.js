@@ -15,17 +15,29 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
   // ✅ Include employeeId in deps so srcObject reattaches after navigation away/back
   useEffect(() => {
     if (cameraRef.current && candidate.cameraStream) {
-      if (cameraRef.current.srcObject !== candidate.cameraStream) {
-        cameraRef.current.srcObject = candidate.cameraStream;
-        cameraRef.current.play().catch(e => console.warn("Card camera play error:", e));
+      const video = cameraRef.current;
+      if (video.srcObject !== candidate.cameraStream) {
+        video.srcObject = candidate.cameraStream;
+        video.muted = true;
+        video.playsInline = true;
+        video.onloadedmetadata = () => {
+          video.play().catch(e => console.warn("Card camera play error:", e));
+        };
+        video.play().catch(e => console.warn("Card camera fallback play error:", e));
       }
     } else if (cameraRef.current && !candidate.cameraStream) {
       cameraRef.current.srcObject = null;
     }
     if (screenRef.current && candidate.screenStream) {
-      if (screenRef.current.srcObject !== candidate.screenStream) {
-        screenRef.current.srcObject = candidate.screenStream;
-        screenRef.current.play().catch(e => console.warn("Card screen play error:", e));
+      const video = screenRef.current;
+      if (video.srcObject !== candidate.screenStream) {
+        video.srcObject = candidate.screenStream;
+        video.muted = true;
+        video.playsInline = true;
+        video.onloadedmetadata = () => {
+          video.play().catch(e => console.warn("Card screen play error:", e));
+        };
+        video.play().catch(e => console.warn("Card screen fallback play error:", e));
       }
     } else if (screenRef.current && !candidate.screenStream) {
       screenRef.current.srcObject = null;
@@ -158,15 +170,27 @@ export default function AdminMonitoring() {
       const currentCandidate = activeExams.find(e => e.employeeId === selectedCandidate.employeeId);
       if (currentCandidate) {
         if (selectedCameraRef.current && currentCandidate.cameraStream) {
-          if (selectedCameraRef.current.srcObject !== currentCandidate.cameraStream) {
-            selectedCameraRef.current.srcObject = currentCandidate.cameraStream;
-            selectedCameraRef.current.play().catch(e => console.warn("Camera play error:", e));
+          const video = selectedCameraRef.current;
+          if (video.srcObject !== currentCandidate.cameraStream) {
+            video.srcObject = currentCandidate.cameraStream;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadedmetadata = () => {
+              video.play().catch(e => console.warn("Camera play error:", e));
+            };
+            video.play().catch(e => console.warn("Camera fallback play error:", e));
           }
         }
         if (selectedScreenRef.current && currentCandidate.screenStream) {
-          if (selectedScreenRef.current.srcObject !== currentCandidate.screenStream) {
-            selectedScreenRef.current.srcObject = currentCandidate.screenStream;
-            selectedScreenRef.current.play().catch(e => console.warn("Screen play error:", e));
+          const video = selectedScreenRef.current;
+          if (video.srcObject !== currentCandidate.screenStream) {
+            video.srcObject = currentCandidate.screenStream;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadedmetadata = () => {
+              video.play().catch(e => console.warn("Screen play error:", e));
+            };
+            video.play().catch(e => console.warn("Screen fallback play error:", e));
           }
         }
       }
