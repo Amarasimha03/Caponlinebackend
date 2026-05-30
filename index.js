@@ -76,11 +76,14 @@ const ALLOWED_ORIGINS = [
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+  
+  // Set explicit dynamic reflection to guarantee matching origin (avoids wildcard cookie limitations)
+  if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
+  } else {
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
+  
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
   res.setHeader(
