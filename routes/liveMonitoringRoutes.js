@@ -41,7 +41,7 @@ router.get('/', protect, async (req, res) => {
       };
     });
 
-    res.json(activeExams);
+    res.json(activeExams.filter(exam => exam.socketId));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
