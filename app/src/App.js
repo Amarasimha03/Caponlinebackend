@@ -57,6 +57,18 @@ function App() {
   const { fetchMe, token, user } = useAuthStore();
 
   useEffect(() => {
+    // Early non-blocking background fetch to wake up Render free tier container quickly
+    const wakeUpBackend = async () => {
+      try {
+        const fallbackUrl = "https://testbackend-a1nl.onrender.com/api/health";
+        const targetUrl = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL.replace(/\/$/, '')}/health` : fallbackUrl;
+        fetch(targetUrl).catch(() => {});
+      } catch (err) {}
+    };
+    wakeUpBackend();
+  }, []);
+
+  useEffect(() => {
     if (token) {
       if (!user) {
         fetchMe();
