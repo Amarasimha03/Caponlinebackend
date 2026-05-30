@@ -120,11 +120,6 @@ export function MyExamsTable({ loading, assessments, handleViewResult }) {
                           display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
                           padding: '5px 12px', borderRadius: 99, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)'
                         }}>✓ Completed</span>
-                      ) : a.result?.status === 'in-progress' ? (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
-                          padding: '5px 12px', borderRadius: 99, background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)'
-                        }}>🔄 In Progress</span>
                       ) : (
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
