@@ -10,6 +10,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
+
+  React.useEffect(() => {
+    // Early background warm-up fetch to spin up Render free tier container
+    const wakeUpBackend = async () => {
+      try {
+        const fallbackUrl = "https://testbackend-a1nl.onrender.com/api/health";
+        const targetUrl = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL.replace(/\/$/, '')}/health` : fallbackUrl;
+        
+        // If server is cold-starting, track the timeout to show warm-up notification
+        const timer = setTimeout(() => setIsWakingUp(true), 2500);
+
+        await fetch(targetUrl).catch(() => {});
+        clearTimeout(timer);
+        setIsWakingUp(false);
+      } catch (err) {
+        setIsWakingUp(false);
+      }
+    };
+    wakeUpBackend();
+  }, []);
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
 
@@ -131,8 +152,29 @@ export default function LoginPage() {
           justifyContent: 'center',
         }}>
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 }}>
             <img src="/logo.svg" alt="Cabptoid SOLUTIONS Logo" style={{ height: 76, objectFit: 'contain' }} />
+            {isWakingUp && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'rgba(59,158,255,0.08)',
+                  border: '1.5px solid rgba(59,158,255,0.2)',
+                  borderRadius: 20,
+                  padding: '6px 12px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#3b9eff'
+                }}
+              >
+                <Loader2 size={12} className="animate-spin" />
+                <span>Connecting server...</span>
+              </motion.div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} autoComplete="off">
