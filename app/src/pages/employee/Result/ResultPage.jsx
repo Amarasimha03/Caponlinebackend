@@ -105,7 +105,7 @@ export default function ResultPage() {
         {error || "No result available"}
       </p>
       <button
-        onClick={() => navigate(employeeId ? "/admin/results" : "/employee/dashboard")}
+        onClick={() => navigate(employeeId ? "/admin/dashboard" : "/employee/dashboard")}
         style={{
           marginTop: 20, padding: "10px 24px", borderRadius: 10,
           border: "1px solid #D3D1C7", background: "#fff",

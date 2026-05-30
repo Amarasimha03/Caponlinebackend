@@ -25,7 +25,7 @@ export function ResultHeader({
 
       {/* Back button */}
       <button
-        onClick={() => navigate(employeeId ? '/admin/results' : '/employee/dashboard')}
+        onClick={() => navigate(employeeId ? '/admin/dashboard' : '/employee/dashboard')}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 5,
           fontSize: 12, color: passed ? '#4a7a2a' : '#a03030',
@@ -34,7 +34,7 @@ export function ResultHeader({
         }}
       >
         <ArrowLeft size={13} strokeWidth={2} />
-        Back to {employeeId ? 'results' : 'dashboard'}
+        Back to dashboard
       </button>
 
       {/* Header row */}
