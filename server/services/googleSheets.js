@@ -65,7 +65,8 @@ exports.querySheets = async (action, payload = {}) => {
     const res = await fetch(url.toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formBody.toString()
+      body: formBody.toString(),
+      redirect: 'follow'
     });
 
     const text = await res.text();
