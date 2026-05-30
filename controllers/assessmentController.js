@@ -307,14 +307,31 @@ exports.startExam = async (req, res) => {
 
     const resRes = await querySheets('getResults');
     const allResults = resRes.data || [];
-    const alreadyAttempted = allResults.find(r =>
+    const activeAttempt = allResults.find(r =>
       String(r.employee || r.employeeMongoId) === String(req.user._id) &&
-      String(r.assessmentId || r.assessment) === String(assessmentId)
+      String(r.assessmentId || r.assessment) === String(assessmentId) &&
+      r.status === 'in-progress'
     );
-    if (alreadyAttempted) {
+
+    if (activeAttempt) {
+      // If there is an active in-progress exam, allow the user to resume it!
+      return res.status(200).json({
+        success: true,
+        result: activeAttempt,
+        message: "Resuming in-progress exam attempt."
+      });
+    }
+
+    const completedAttempt = allResults.find(r =>
+      String(r.employee || r.employeeMongoId) === String(req.user._id) &&
+      String(r.assessmentId || r.assessment) === String(assessmentId) &&
+      r.status !== 'in-progress'
+    );
+
+    if (completedAttempt) {
       return res.status(400).json({
         success: false,
-        message: "Exam already attempted or in-progress."
+        message: "Exam already attempted. Retakes are not allowed."
       });
     }
 
