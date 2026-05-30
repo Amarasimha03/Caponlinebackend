@@ -928,13 +928,18 @@ function getMonitoring(body) {
 
 function saveViolation(data) {
   var sheet = getSheet("violations");
-  ensureHeaders(sheet, ['timestamp', 'employeeId', 'name', 'warningCount', 'reason']);
+  ensureHeaders(sheet, VIO_HEADERS);
   sheet.appendRow([
-    new Date(),
-    data.employeeId || '',
-    data.name || '',
-    data.warningCount || 0,
-    data.reason || ''
+    generateId('VIO'),            // _id
+    data.employeeId || '',        // employeeId
+    data.employeeId || '',        // employeeMongoId
+    data.name || '',              // employeeName
+    data.assessmentId || '',      // assessmentId
+    data.resultId || '',          // resultId
+    'Proctoring',                 // type
+    data.reason || '',            // description
+    'medium',                     // severity
+    new Date().toISOString()      // timestamp
   ]);
   return jsonResponse({ success: true });
 }
