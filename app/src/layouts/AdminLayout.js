@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,6 +26,13 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Stable ref so the interval callback never captures a stale/recreated function
+  const fetchRef = useRef(fetchMonitoringData);
+  useEffect(() => { fetchRef.current = fetchMonitoringData; });
+
+  // Stable interval callback that always calls the latest fetch fn
+  const stableFetch = useCallback(() => fetchRef.current(), []);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -39,11 +46,12 @@ export default function AdminLayout() {
     }
 
     init();
-    fetchMonitoringData();
+    stableFetch();
     // Poll every 30s — enough to stay fresh without hammering the server
-    const interval = setInterval(fetchMonitoringData, 30000);
+    const interval = setInterval(stableFetch, 30000);
     return () => clearInterval(interval);
-  }, [init, fetchMonitoringData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [init, stableFetch]);
 
   const handleLogout = () => {
     destroy();
