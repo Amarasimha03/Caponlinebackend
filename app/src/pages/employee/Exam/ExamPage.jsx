@@ -42,7 +42,7 @@ export default function ExamPage() {
   const LS_EXAM_KEY = `examState_${assessmentId}`;
 
   // Managers/Hooks
-  const { videoRef, streamRef, webcamReady, startWebcam, stopWebcam } = useCamera(user);
+  const { videoRef, streamRef, webcamReady, cameraLoading, cameraError, startWebcam, stopWebcam } = useCamera(user);
   const { screenStreamRef, screenReady, screenError, startScreenShare, stopScreenShare } = useScreenShare();
 
   const broadcastExamStart = useCallback(() => {
@@ -314,12 +314,27 @@ export default function ExamPage() {
 
         {/* Proctoring Control Checklist */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 360, marginTop: 24, marginBottom: 12 }}>
-          {/* Camera Status Row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Webcam Stream</span>
-            <span style={{ fontSize: 13, color: webcamReady ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
-              {webcamReady ? '✓ ACTIVE' : '⏳ CONNECTING...'}
-            </span>
+          {/* Camera Status Row with Action */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Webcam Stream</span>
+              <span style={{ fontSize: 13, color: webcamReady ? '#10b981' : cameraError ? '#ef4444' : '#f59e0b', fontWeight: 700 }}>
+                {webcamReady ? '✓ ACTIVE' : cameraError ? '✗ FAILED' : '⏳ CONNECTING...'}
+              </span>
+            </div>
+            {!webcamReady && (
+              <button
+                onClick={startWebcam}
+                disabled={cameraLoading}
+                className="btn btn-primary btn-sm"
+                style={{ width: '100%', marginTop: 6, justifyContent: 'center', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 700 }}
+              >
+                {cameraLoading ? 'Starting Camera...' : 'Retry Camera Access'}
+              </button>
+            )}
+            {!webcamReady && cameraError && (
+              <p style={{ color: '#f87171', fontSize: 12, marginTop: 6, textAlign: 'center' }}>{cameraError}</p>
+            )}
           </div>
 
           {/* Screen Share Status Row with Action */}
