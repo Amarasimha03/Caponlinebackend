@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { Camera } from 'lucide-react';
 import socket from '../../../services/socket';
 import useAuthStore from '../../../store/authStore';
@@ -7,20 +7,23 @@ export function MonitoringPanel({ videoRef, streamRef }) {
   const { user } = useAuthStore();
   const canvasRef = useRef(document.createElement('canvas'));
 
-  // Bind WebRTC stream to video element on mount
-  useEffect(() => {
-    if (videoRef.current && streamRef?.current) {
-      if (videoRef.current.srcObject !== streamRef.current) {
-        videoRef.current.srcObject = streamRef.current;
-        videoRef.current.play().catch(err => console.warn('Monitoring Video Play Error:', err));
+  // Callback ref to bind stream and update parent ref when element mounts
+  const videoCallbackRef = useCallback((node) => {
+    if (videoRef) {
+      videoRef.current = node;
+    }
+    if (node && streamRef?.current) {
+      if (node.srcObject !== streamRef.current) {
+        node.srcObject = streamRef.current;
       }
+      node.play().catch(err => console.warn('Monitoring Video Play Error:', err));
     }
   }, [videoRef, streamRef]);
 
   // Base64 Live Frame Emitter
   useEffect(() => {
     const interval = setInterval(() => {
-      if (videoRef.current && user?._id) {
+      if (videoRef?.current && user?._id) {
         const video = videoRef.current;
         if (video.videoWidth > 0 && video.videoHeight > 0) {
           const canvas = canvasRef.current;
@@ -48,7 +51,7 @@ export function MonitoringPanel({ videoRef, streamRef }) {
       </h3>
 
       <div style={{ width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', background: '#000', marginBottom: 20, border: '2px solid var(--border)' }}>
-        <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+        <video ref={videoCallbackRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

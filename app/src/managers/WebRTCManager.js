@@ -46,6 +46,8 @@ export class WebRTCManager {
       this.socket.emit('webrtc:offer', {
         employeeId: this.user?._id,
         offer: offer,
+        cameraStreamId: cameraStream?.id,
+        screenStreamId: screenStream?.id,
       });
     } catch (err) {
       console.error('WebRTC Offer Error:', err);

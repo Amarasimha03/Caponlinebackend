@@ -10,6 +10,9 @@ const peerConnections = {};
 // First unseen stream ID = camera, second unseen stream ID = screen
 const peerStreamRegistry = {};
 
+// Maps employeeId → { cameraStreamId, screenStreamId }
+const peerStreamIdMap = {};
+
 // Backoff counter — stops poll spam after repeated 401 / network failures
 let consecutiveFailures = 0;
 const MAX_FAILURES = 3;
@@ -157,7 +160,7 @@ const useMonitoringStore = create((set, get) => ({
     });
 
     socket.on('webrtc:offer', async (data) => {
-      const { employeeId, offer, socketId } = data;
+      const { employeeId, offer, socketId, cameraStreamId, screenStreamId } = data;
       console.log(`[MonitoringStore] WebRTC offer received from ${employeeId}`);
 
       // Close existing connection if any
@@ -167,6 +170,7 @@ const useMonitoringStore = create((set, get) => ({
 
       // Reset stream registry for this peer
       peerStreamRegistry[employeeId] = new Set();
+      peerStreamIdMap[employeeId] = { cameraStreamId, screenStreamId };
 
       const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
       peerConnections[employeeId] = pc;
@@ -178,20 +182,27 @@ const useMonitoringStore = create((set, get) => ({
         if (track.kind !== 'video') return; // Only map video tracks
 
         // ✅ Stream-identity-based assignment (fixes black screen)
-        // The employee sends: cameraStream tracks first, then screenStream tracks.
-        // Each group has its own distinct MediaStream object.
         // We use a registry of seen stream IDs to determine camera vs. screen.
         const stream = event.streams[0] || new MediaStream([track]);
         const registry = peerStreamRegistry[employeeId];
+        const streamIds = peerStreamIdMap[employeeId] || {};
 
         if (!registry.has(stream.id)) {
           registry.add(stream.id);
-          const isFirstStream = registry.size === 1;
+          
+          let isCamera = false;
+          if (streamIds.cameraStreamId && stream.id === streamIds.cameraStreamId) {
+            isCamera = true;
+          } else if (streamIds.screenStreamId && stream.id === streamIds.screenStreamId) {
+            isCamera = false;
+          } else {
+            isCamera = registry.size === 1;
+          }
 
           set((state) => {
             const updated = state.activeExams.map((e) => {
               if (e.employeeId !== employeeId) return e;
-              if (isFirstStream) {
+              if (isCamera) {
                 console.log(`[MonitoringStore] Setting CAMERA stream for ${employeeId} (stream: ${stream.id})`);
                 return { ...e, cameraStream: stream, webrtcConnected: true };
               } else {
@@ -267,6 +278,7 @@ const useMonitoringStore = create((set, get) => ({
         delete peerConnections[data.employeeId];
       }
       delete peerStreamRegistry[data.employeeId];
+      delete peerStreamIdMap[data.employeeId];
       set((state) => ({
         activeExams: state.activeExams.filter((e) => e.employeeId !== data.employeeId),
       }));
@@ -279,6 +291,7 @@ const useMonitoringStore = create((set, get) => ({
         delete peerConnections[data.employeeId];
       }
       delete peerStreamRegistry[data.employeeId];
+      delete peerStreamIdMap[data.employeeId];
       set((state) => ({
         activeExams: state.activeExams.map((e) =>
           e.employeeId === data.employeeId
@@ -326,6 +339,7 @@ const useMonitoringStore = create((set, get) => ({
       delete peerConnections[employeeId];
     }
     delete peerStreamRegistry[employeeId];
+    delete peerStreamIdMap[employeeId];
 
     // Remove from admin UI immediately (don't wait for exam:completed echo)
     set((state) => ({
@@ -348,6 +362,9 @@ const useMonitoringStore = create((set, get) => ({
     });
     Object.keys(peerStreamRegistry).forEach((key) => {
       delete peerStreamRegistry[key];
+    });
+    Object.keys(peerStreamIdMap).forEach((key) => {
+      delete peerStreamIdMap[key];
     });
     socket.off('connect');
     socket.off('admin:active-exams');
