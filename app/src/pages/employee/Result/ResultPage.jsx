@@ -112,7 +112,7 @@ export default function ResultPage() {
           cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#2C2C2A",
         }}
       >
-        Back to {window.location.pathname.startsWith('/admin') ? "reports" : "dashboard"}
+        Back to {window.location.pathname.startsWith('/admin') ? "Results" : "Reports"}
       </button>
     </div>
   );
@@ -121,7 +121,7 @@ export default function ResultPage() {
   const passed = summary?.passed ?? false;
   const durationStr = formatDuration(durationSeconds);
   const scorePercent = summary?.scorePercent ?? 0;
-  
+
   const startTimeStr = startTime ? new Date(startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
   const endTimeStr = endTime ? new Date(endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
 
