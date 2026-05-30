@@ -77,8 +77,6 @@ export function MyExamsTable({ loading, assessments, handleViewResult }) {
                     onClick={() => {
                       if (isExamDone(a)) {
                         handleViewResult(a);
-                      } else if (a.result?.status === 'in-progress') {
-                        // Do nothing
                       } else {
                         navigate(`/exam/${a._id}`);
                       }
@@ -138,10 +136,6 @@ export function MyExamsTable({ loading, assessments, handleViewResult }) {
                       {isExamDone(a) ? (
                         <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleViewResult(a); }} style={{ background: 'transparent', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.1)'; e.currentTarget.style.borderColor = '#10b981'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)'; }}>
                           <Eye size={14} /> View Result
-                        </button>
-                      ) : a.result?.examStarted || a.result?.status === 'in-progress' ? (
-                        <button className="btn btn-sm" disabled style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, padding: '8px 14px', borderRadius: '8px', cursor: 'not-allowed' }}>
-                          Already Started
                         </button>
                       ) : (
                         <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/exam/${a._id}`); }} style={{
