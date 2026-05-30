@@ -66,10 +66,21 @@ app.options('*', (req, res) => {
 
 app.use(compression());
 
-// ── CORS: Dynamically allow the requesting origin ──────────────
+// ── CORS: Secure allowed origins containing local dev and Render environments ──
+const ALLOWED_ORIGINS = [
+  'https://caponlinetest.onrender.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
   res.setHeader(
