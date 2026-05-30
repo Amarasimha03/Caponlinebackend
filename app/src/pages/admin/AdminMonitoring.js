@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, User, Camera, CameraOff, Maximize2, X, Activity, ShieldAlert, Monitor } from 'lucide-react';
+import { AlertTriangle, User, Camera, CameraOff, Maximize2, X, Activity, ShieldAlert, Monitor, Loader } from 'lucide-react';
 import useMonitoringStore from '../../store/monitoringStore';
 
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
@@ -8,20 +8,26 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
   const cameraRef = useRef(null);
   const screenRef = useRef(null);
 
+  // ✅ Include employeeId in deps so srcObject reattaches after navigation away/back
   useEffect(() => {
     if (cameraRef.current && candidate.cameraStream) {
       if (cameraRef.current.srcObject !== candidate.cameraStream) {
         cameraRef.current.srcObject = candidate.cameraStream;
         cameraRef.current.play().catch(e => console.warn("Card camera play error:", e));
       }
+    } else if (cameraRef.current && !candidate.cameraStream) {
+      cameraRef.current.srcObject = null;
     }
     if (screenRef.current && candidate.screenStream) {
       if (screenRef.current.srcObject !== candidate.screenStream) {
         screenRef.current.srcObject = candidate.screenStream;
         screenRef.current.play().catch(e => console.warn("Card screen play error:", e));
       }
+    } else if (screenRef.current && !candidate.screenStream) {
+      screenRef.current.srcObject = null;
     }
-  }, [candidate.cameraStream, candidate.screenStream]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidate.cameraStream, candidate.screenStream, candidate.employeeId]);
 
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
@@ -39,8 +45,13 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         <div style={{ flex: 1, borderRight: '1px solid #333', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <video ref={cameraRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
           {!candidate.cameraStream && (
-            <div style={{ position: 'absolute', color: '#ef4444', textAlign: 'center' }}>
-              <CameraOff size={24} className="animate-pulse" />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              {candidate.webrtcConnected
+                ? <Loader size={18} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
+                : <CameraOff size={22} style={{ color: '#ef4444' }} />}
+              <span style={{ fontSize: 9, color: candidate.webrtcConnected ? '#f59e0b' : '#ef4444' }}>
+                {candidate.webrtcConnected ? 'Loading...' : 'No Camera'}
+              </span>
             </div>
           )}
           <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -52,8 +63,13 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <video ref={screenRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           {!candidate.screenStream && (
-            <div style={{ position: 'absolute', color: '#ef4444', textAlign: 'center' }}>
-              <Monitor size={24} className="animate-pulse" />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              {candidate.webrtcConnected
+                ? <Loader size={18} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
+                : <Monitor size={22} style={{ color: '#ef4444' }} />}
+              <span style={{ fontSize: 9, color: candidate.webrtcConnected ? '#f59e0b' : '#ef4444' }}>
+                {candidate.webrtcConnected ? 'Loading...' : 'No Screen'}
+              </span>
             </div>
           )}
           <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -107,8 +123,16 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
   );
 });
 
+// Add CSS keyframe for loading spinner if not already present
+if (typeof document !== 'undefined' && !document.getElementById('monitoring-keyframes')) {
+  const style = document.createElement('style');
+  style.id = 'monitoring-keyframes';
+  style.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+  document.head.appendChild(style);
+}
+
 export default function AdminMonitoring() {
-  const { activeExams, violations, connected, fetchMonitoringData, rejoin, terminateExam } = useMonitoringStore();
+  const { activeExams, violations, connected, fetchMonitoringData, rejoin, terminateExam, restoreStreams } = useMonitoringStore();
   const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   const selectedCameraRef = useRef(null);
@@ -116,8 +140,14 @@ export default function AdminMonitoring() {
 
   useEffect(() => {
     fetchMonitoringData();
-    rejoin();
-  }, [fetchMonitoringData, rejoin]);
+    // ✅ Try to restore streams from existing peer connections first
+    // Only trigger full renegotiation if no active connections exist
+    const didRestore = restoreStreams();
+    if (!didRestore) {
+      rejoin(); // No existing connections — ask employees to send new offers
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update selected candidate streams in the modal when it opens
   useEffect(() => {

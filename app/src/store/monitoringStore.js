@@ -6,6 +6,10 @@ import api from '../services/api';
 // Stored outside the React/Zustand state tree to avoid proxying or triggering infinite renders
 const peerConnections = {};
 
+// Per-peer stream identity registry: maps employeeId → Set of seen stream IDs
+// First unseen stream ID = camera, second unseen stream ID = screen
+const peerStreamRegistry = {};
+
 // Backoff counter — stops poll spam after repeated 401 / network failures
 let consecutiveFailures = 0;
 const MAX_FAILURES = 3;
@@ -60,6 +64,58 @@ const useMonitoringStore = create((set, get) => ({
     }
   },
 
+  // ✅ Restore streams from existing peer connections without renegotiating
+  // Called when AdminMonitoring mounts/remounts after navigation
+  restoreStreams: () => {
+    const activePeers = Object.keys(peerConnections);
+    if (activePeers.length === 0) return false; // No existing connections to restore
+
+    let restoredCount = 0;
+    set((state) => {
+      const updatedExams = state.activeExams.map((exam) => {
+        const pc = peerConnections[exam.employeeId];
+        if (!pc) return exam;
+
+        // If still connected and streams already in state, keep them
+        if (exam.cameraStream || exam.screenStream) {
+          restoredCount++;
+          return exam;
+        }
+
+        // Try to restore from active receivers
+        const receivers = pc.getReceivers ? pc.getReceivers() : [];
+        const videoReceivers = receivers.filter(r => r.track && r.track.kind === 'video' && r.track.readyState === 'live');
+
+        if (videoReceivers.length === 0) return exam;
+
+        let cameraStream = exam.cameraStream;
+        let screenStream = exam.screenStream;
+
+        if (!cameraStream && videoReceivers[0]?.track) {
+          cameraStream = new MediaStream([videoReceivers[0].track]);
+          console.log(`[MonitoringStore] Restored camera stream for ${exam.employeeId}`);
+        }
+        if (!screenStream && videoReceivers[1]?.track) {
+          screenStream = new MediaStream([videoReceivers[1].track]);
+          console.log(`[MonitoringStore] Restored screen stream for ${exam.employeeId}`);
+        }
+
+        if (cameraStream || screenStream) restoredCount++;
+
+        return {
+          ...exam,
+          cameraStream: cameraStream ?? exam.cameraStream,
+          screenStream: screenStream ?? exam.screenStream,
+          webrtcConnected: pc.connectionState === 'connected' || exam.webrtcConnected,
+        };
+      });
+      return { activeExams: updatedExams };
+    });
+
+    console.log(`[MonitoringStore] restoreStreams: restored ${restoredCount} peers`);
+    return restoredCount > 0;
+  },
+
   // Initialize Socket.IO listeners exactly once
   init: () => {
     if (get().initialized) return;
@@ -109,32 +165,43 @@ const useMonitoringStore = create((set, get) => ({
         peerConnections[employeeId].close();
       }
 
+      // Reset stream registry for this peer
+      peerStreamRegistry[employeeId] = new Set();
+
       const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
       peerConnections[employeeId] = pc;
 
       pc.ontrack = (event) => {
-        console.log(`[MonitoringStore] Received track from ${employeeId}`);
+        console.log(`[MonitoringStore] Received track from ${employeeId}`, event.track.kind, event.track.label);
+
         const track = event.track;
         if (track.kind !== 'video') return; // Only map video tracks
 
-        pc.videoTracksReceived = (pc.videoTracksReceived || 0) + 1;
+        // ✅ Stream-identity-based assignment (fixes black screen)
+        // The employee sends: cameraStream tracks first, then screenStream tracks.
+        // Each group has its own distinct MediaStream object.
+        // We use a registry of seen stream IDs to determine camera vs. screen.
         const stream = event.streams[0] || new MediaStream([track]);
-        
-        set((state) => {
-          const updated = state.activeExams.map((e) => {
-            if (e.employeeId === employeeId) {
-              if (pc.videoTracksReceived === 1) {
-                console.log(`[MonitoringStore] Setting camera stream for ${employeeId}`);
+        const registry = peerStreamRegistry[employeeId];
+
+        if (!registry.has(stream.id)) {
+          registry.add(stream.id);
+          const isFirstStream = registry.size === 1;
+
+          set((state) => {
+            const updated = state.activeExams.map((e) => {
+              if (e.employeeId !== employeeId) return e;
+              if (isFirstStream) {
+                console.log(`[MonitoringStore] Setting CAMERA stream for ${employeeId} (stream: ${stream.id})`);
                 return { ...e, cameraStream: stream, webrtcConnected: true };
-              } else if (pc.videoTracksReceived === 2) {
-                console.log(`[MonitoringStore] Setting screen stream for ${employeeId}`);
+              } else {
+                console.log(`[MonitoringStore] Setting SCREEN stream for ${employeeId} (stream: ${stream.id})`);
                 return { ...e, screenStream: stream, webrtcConnected: true };
               }
-            }
-            return e;
+            });
+            return { activeExams: updated };
           });
-          return { activeExams: updated };
-        });
+        }
       };
 
       pc.onicecandidate = (event) => {
@@ -199,6 +266,7 @@ const useMonitoringStore = create((set, get) => ({
         peerConnections[data.employeeId].close();
         delete peerConnections[data.employeeId];
       }
+      delete peerStreamRegistry[data.employeeId];
       set((state) => ({
         activeExams: state.activeExams.filter((e) => e.employeeId !== data.employeeId),
       }));
@@ -210,6 +278,7 @@ const useMonitoringStore = create((set, get) => ({
         peerConnections[data.employeeId].close();
         delete peerConnections[data.employeeId];
       }
+      delete peerStreamRegistry[data.employeeId];
       set((state) => ({
         activeExams: state.activeExams.filter((e) => e.employeeId !== data.employeeId),
       }));
@@ -252,6 +321,7 @@ const useMonitoringStore = create((set, get) => ({
       peerConnections[employeeId].close();
       delete peerConnections[employeeId];
     }
+    delete peerStreamRegistry[employeeId];
 
     // Remove from admin UI immediately (don't wait for exam:completed echo)
     set((state) => ({
@@ -259,8 +329,11 @@ const useMonitoringStore = create((set, get) => ({
     }));
   },
 
+  // ✅ Rejoin admin room — tries restoreStreams first, falls back to renegotiation
   rejoin: () => {
     socket.emit('admin:join');
+    // restoreStreams() will be called by AdminMonitoring on mount — 
+    // do not force renegotiation if peers are already connected
   },
 
   // Close and clean up all connections if needed
@@ -268,6 +341,9 @@ const useMonitoringStore = create((set, get) => ({
     Object.keys(peerConnections).forEach((key) => {
       peerConnections[key].close();
       delete peerConnections[key];
+    });
+    Object.keys(peerStreamRegistry).forEach((key) => {
+      delete peerStreamRegistry[key];
     });
     socket.off('connect');
     socket.off('admin:active-exams');
