@@ -1,8 +1,5 @@
 const jwt = require('jsonwebtoken');
 const { querySheets } = require('../services/googleSheets');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_jwt_secret_onlinetest_2024_change_me';
-
 exports.protect = async (req, res, next) => {
   try {
     let token;
@@ -11,7 +8,8 @@ exports.protect = async (req, res, next) => {
     }
     if (!token) return res.status(401).json({ success: false, message: 'Not authorized, no token' });
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const secret = process.env.JWT_SECRET || 'onlinetest_jwt_secret_2024_secure_key';
+    const decoded = jwt.verify(token, secret);
     
     // Fetch all employees from Google Sheets
     const empRes = await querySheets('getEmployees');
@@ -46,5 +44,6 @@ exports.adminOnly = (req, res, next) => {
 
 exports.generateToken = (id) => {
   const expiresIn = id === 'admin_id' ? '3650d' : (process.env.JWT_EXPIRES_IN || '30d');
-  return jwt.sign({ id }, JWT_SECRET, { expiresIn });
+  const secret = process.env.JWT_SECRET || 'onlinetest_jwt_secret_2024_secure_key';
+  return jwt.sign({ id }, secret, { expiresIn });
 };
