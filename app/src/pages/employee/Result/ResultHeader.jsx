@@ -1,150 +1,114 @@
 import React from 'react';
-import { ArrowLeft, Copy, Download } from 'lucide-react';
+import { ArrowLeft, Copy, CheckCircle2 } from 'lucide-react';
 
-export function ResultHeader({ navigate, employeeId, handleCopyResult, passed, scorePercent, exam, employee, submittedAt, formatDate }) {
+export function ResultHeader({
+  navigate, employeeId, handleCopyResult,
+  passed, scorePercent, exam, employee, submittedAt, formatDate,
+}) {
   return (
-    <>
-      {/* ── Top action bar ── */}
-      <div className="result-page-fade" style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        marginBottom: 28, flexWrap: "wrap", gap: 12,
-      }}>
-        <button
-          className="result-action-btn"
-          onClick={() => navigate(employeeId ? "/admin/results" : "/employee/dashboard")}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "8px 16px", borderRadius: 10,
-            border: "1px solid #D3D1C7", background: "#fff",
-            cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#5F5E5A",
-            transition: "background 0.15s",
-          }}
-        >
-          <ArrowLeft size={14} /> Back
-        </button>
+    <div style={{
+      background: passed ? '#d4edda' : '#fde8e8',
+      padding: '18px 20px 16px',
+      position: 'relative', overflow: 'hidden',
+    }}>
 
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            className="result-action-btn"
-            onClick={handleCopyResult}
-            style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "8px 16px", borderRadius: 10,
-              border: "1px solid #D3D1C7", background: "#fff",
-              cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#5F5E5A",
-              transition: "background 0.15s",
-            }}
-          >
-            <Copy size={13} /> Copy
-          </button>
-          <button
-            className="result-action-btn-primary"
-            onClick={() => window.print()}
-            style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "8px 18px", borderRadius: 10,
-              border: "none", background: "#3B6D11",
-              cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#fff",
-              transition: "background 0.15s",
-            }}
-          >
-            <Download size={13} /> PDF
-          </button>
-        </div>
+      {/* Score watermark */}
+      <div style={{
+        position: 'absolute', right: 20, top: '50%',
+        transform: 'translateY(-50%)',
+        fontSize: 64, fontWeight: 700, lineHeight: 1,
+        color: passed ? 'rgba(100,160,60,0.15)' : 'rgba(200,60,60,0.12)',
+        pointerEvents: 'none', userSelect: 'none',
+      }}>
+        {scorePercent}%
       </div>
 
-      {/* ── Hero band ── */}
-      <div className="result-page-fade-1" style={{
-        padding: "36px 44px 32px",
-        background: passed ? "#EAF3DE" : "#FCEBEB",
-        borderBottom: `3px solid ${passed ? "#639922" : "#E24B4A"}`,
-        position: "relative",
-      }}>
-        <div style={{
-          position: "absolute", right: 36, top: "50%", transform: "translateY(-50%)",
-          fontFamily: "'DM Mono', monospace",
-          fontSize: 88, fontWeight: 700, lineHeight: 1,
-          color: passed ? "rgba(99,153,34,0.12)" : "rgba(226,75,74,0.12)",
-          userSelect: "none", pointerEvents: "none",
-          letterSpacing: "-0.04em",
-        }}>
-          {scorePercent}%
-        </div>
+      {/* Back button */}
+      <button
+        onClick={() => navigate(employeeId ? '/admin/results' : '/employee/dashboard')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          fontSize: 12, color: passed ? '#4a7a2a' : '#a03030',
+          background: 'none', border: 'none', cursor: 'pointer',
+          padding: 0, marginBottom: 14,
+        }}
+      >
+        <ArrowLeft size={13} strokeWidth={2} />
+        Back to {employeeId ? 'results' : 'dashboard'}
+      </button>
 
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Check icon box */}
           <div style={{
-            flexShrink: 0,
-            width: 52, height: 52, borderRadius: 14,
-            background: passed ? "#639922" : "#E24B4A",
-            display: "flex", alignItems: "center", justifyContent: "center",
+            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+            background: passed ? '#3B6D11' : '#A32D2D',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            {passed ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M5 13L9.5 17.5L19 8" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M6 6L16 16M16 6L6 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-            )}
+            <CheckCircle2 size={20} color="#fff" strokeWidth={2} />
           </div>
 
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <h1 style={{
-                fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em",
-                color: "#1A1A18", margin: 0, lineHeight: 1.2,
-              }}>
-                {exam?.title}
-              </h1>
+            <div style={{ fontSize: 15, fontWeight: 600, color: passed ? '#1a3a0a' : '#3a0a0a', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {exam?.title ?? 'Assessment'}
               <span style={{
-                fontSize: 10, fontWeight: 800, textTransform: "uppercase",
-                letterSpacing: "0.1em", padding: "4px 10px", borderRadius: 20,
-                background: passed ? "#3B6D11" : "#A32D2D",
-                color: "#fff",
+                fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
+                background: passed ? '#3B6D11' : '#A32D2D',
+                color: '#fff', letterSpacing: '.4px',
               }}>
-                {passed ? "Passed" : "Failed"}
+                {passed ? 'PASSED' : 'FAILED'}
               </span>
             </div>
-
-            {employee?.name && (
-              <div style={{ fontSize: 13, color: "#5F5E5A", marginBottom: 3 }}>
-                {employee.name}{employee.department ? ` · ${employee.department}` : ""}
-              </div>
-            )}
-
-            <div style={{
-              fontSize: 12, color: "#888780",
-              fontFamily: "'DM Mono', monospace",
-            }}>
+            <div style={{ fontSize: 12, color: passed ? '#4a7a2a' : '#7a2a2a', marginTop: 2 }}>
+              {employee?.name ?? '—'} · {employee?.department ?? employee?.dept ?? '—'}
+            </div>
+            <div style={{ fontSize: 12, color: passed ? '#4a7a2a' : '#7a2a2a', marginTop: 1 }}>
               {formatDate(submittedAt)}
             </div>
           </div>
         </div>
 
-        {/* Score progress bar */}
+        {/* Copy button */}
+        <button
+          onClick={handleCopyResult}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            fontSize: 12, padding: '5px 11px', borderRadius: 8,
+            border: `0.5px solid ${passed ? '#97C459' : '#F09595'}`,
+            background: 'none',
+            color: passed ? '#3B6D11' : '#791F1F',
+            cursor: 'pointer', flexShrink: 0,
+          }}
+        >
+          <Copy size={13} />
+          Copy result
+        </button>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ marginTop: 14 }}>
         <div style={{
-          marginTop: 24,
-          height: 6, background: passed ? "rgba(99,153,34,0.2)" : "rgba(226,75,74,0.2)",
-          borderRadius: 3, overflow: "hidden",
-        }}>
-          <div style={{
-            height: "100%", borderRadius: 3,
-            width: `${scorePercent}%`,
-            background: passed ? "#639922" : "#E24B4A",
-            transition: "width 1s cubic-bezier(0.4, 0, 0.2, 1)",
-          }} />
-        </div>
-        <div style={{
-          display: "flex", justifyContent: "space-between",
-          marginTop: 6, fontSize: 11, color: passed ? "#3B6D11" : "#A32D2D",
-          fontFamily: "'DM Mono', monospace", fontWeight: 600,
+          display: 'flex', justifyContent: 'space-between',
+          fontSize: 10, color: passed ? '#4a7a2a' : '#7a2a2a', marginBottom: 4,
         }}>
           <span>0%</span>
-          <span style={{ fontWeight: 800 }}>{scorePercent}% achieved</span>
+          <span>{scorePercent}% achieved</span>
           <span>100%</span>
         </div>
+        <div style={{
+          height: 6, borderRadius: 3,
+          background: passed ? 'rgba(100,160,60,0.2)' : 'rgba(200,60,60,0.15)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%', borderRadius: 3,
+            width: `${scorePercent}%`,
+            background: passed ? '#3B6D11' : '#E24B4A',
+            transition: 'width 0.6s ease',
+          }} />
+        </div>
       </div>
-    </>
+    </div>
   );
 }

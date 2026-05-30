@@ -1,82 +1,81 @@
 import React from 'react';
 
-export const StatCard = React.memo(({ value, label, sublabel, accent }) => {
-  const accents = {
-    green: { val: "#27500A", sub: "#3B6D11", bg: "#EAF3DE", bar: "#639922" },
-    red: { val: "#791F1F", sub: "#A32D2D", bg: "#FCEBEB", bar: "#E24B4A" },
-    neutral: { val: "#2C2C2A", sub: "#5F5E5A", bg: "#F1EFE8", bar: "#888780" },
-    muted: { val: "#444441", sub: "#888780", bg: "#F1EFE8", bar: "#B4B2A9" },
-  };
-  const c = accents[accent] || accents.neutral;
-  
-  return (
-    <div style={{
-      background: c.bg,
-      borderRadius: 16,
-      padding: "20px 16px 18px",
-      display: "flex", flexDirection: "column",
-      gap: 6, position: "relative", overflow: "hidden",
-    }}>
-      <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0,
-        height: 3, background: "rgba(0,0,0,0.06)",
-      }}>
-        <div style={{ height: "100%", width: "60%", background: c.bar, borderRadius: "0 2px 2px 0" }} />
-      </div>
-      <div style={{
-        fontSize: 30, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.03em",
-        color: c.val, fontFamily: "'DM Mono', monospace",
-      }}>
-        {value}
-      </div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: c.sub, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: 1.3 }}>
-        {label}
-      </div>
-      {sublabel && (
-        <div style={{ fontSize: 10, color: c.sub, opacity: 0.7, lineHeight: 1.2 }}>{sublabel}</div>
-      )}
-    </div>
-  );
-});
-
-export const SectionLabel = ({ children }) => (
-  <div style={{
-    display: "flex", alignItems: "center", gap: 12, marginBottom: 16,
-  }}>
-    <span style={{
-      fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em",
-      color: "#888780",
-    }}>{children}</span>
-    <div style={{ flex: 1, height: "1px", background: "#E8E6DF" }} />
-  </div>
-);
-
 export function ResultStats({ startTimeStr, endTimeStr, scorePercent, summary, passed, durationStr, exam }) {
+
+  const stats = [
+    {
+      val: `${scorePercent}%`,
+      label: 'SCORE',
+      sub: `${summary?.scoreRaw ?? summary?.correctCount ?? 0} of ${summary?.totalQuestions ?? exam?.totalMarks ?? '—'} pts`,
+      color: passed ? '#3B6D11' : '#A32D2D',
+      accent: passed ? '#3B6D11' : '#E24B4A',
+    },
+    {
+      val: durationStr,
+      label: 'DURATION',
+      sub: exam?.duration ? `${exam.duration}m allowed` : `${startTimeStr} – ${endTimeStr}`,
+      color: '#2C2C2A',
+      accent: '#3B6D11',
+    },
+    {
+      val: summary?.correctCount ?? 0,
+      label: 'CORRECT',
+      sub: null,
+      color: '#2C2C2A',
+      accent: '#3B6D11',
+    },
+    {
+      val: summary?.wrongCount ?? 0,
+      label: 'WRONG',
+      sub: null,
+      color: '#A32D2D',
+      accent: '#E24B4A',
+      highlight: true,
+    },
+    {
+      val: summary?.unattemptedCount ?? summary?.skippedCount ?? 0,
+      label: 'SKIPPED',
+      sub: null,
+      color: '#2C2C2A',
+      accent: '#B4B2A9',
+    },
+  ];
+
   return (
-    <div className="result-page-fade-2" style={{ padding: "28px 44px" }}>
-      <SectionLabel>Performance summary</SectionLabel>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: 10,
+    <div style={{ padding: '16px 20px', borderBottom: '1px solid #E8E6DF' }}>
+      <p style={{
+        fontSize: 10, fontWeight: 600, color: '#888780',
+        letterSpacing: '.8px', marginBottom: 10,
       }}>
-        <StatCard value={startTimeStr} label="Started" accent="muted" />
-        <StatCard value={endTimeStr} label="Finished" accent="muted" />
-        <StatCard
-          value={`${scorePercent}%`}
-          label="Score"
-          sublabel={`${summary?.scoreRaw} of ${summary?.totalQuestions} pts`}
-          accent={passed ? "green" : "red"}
-        />
-        <StatCard
-          value={durationStr}
-          label="Duration"
-          sublabel={`${exam?.maxDurationMinutes ?? "—"}m allowed`}
-          accent="neutral"
-        />
-        <StatCard value={summary?.correctCount ?? 0} label="Correct" accent="green" />
-        <StatCard value={summary?.wrongCount ?? 0} label="Wrong" accent="red" />
-        <StatCard value={summary?.unattemptedCount ?? 0} label="Skipped" accent="muted" />
+        PERFORMANCE SUMMARY
+      </p>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, minmax(0,1fr))',
+        gap: 8,
+      }}>
+        {stats.map((s, i) => (
+          <div key={i} style={{
+            background: s.highlight ? '#FFF0F0' : '#F9F8F5',
+            border: `0.5px solid ${s.highlight ? '#F7C1C1' : '#E8E6DF'}`,
+            borderRadius: 10, padding: '12px 10px',
+          }}>
+            <div style={{ fontSize: 22, fontWeight: 600, color: s.color, lineHeight: 1 }}>
+              {s.val}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#888780', letterSpacing: '.4px', marginTop: 4 }}>
+              {s.label}
+            </div>
+            {s.sub && (
+              <div style={{ fontSize: 10, color: '#888780', marginTop: 2 }}>{s.sub}</div>
+            )}
+            <div style={{
+              height: 3, borderRadius: 2, marginTop: 10,
+              background: s.accent,
+            }} />
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import api from '../../../services/api';
 
 import { ResultHeader } from './ResultHeader';
 import { ResultStats } from './ResultStats';
-import { QuestionAnalysis } from './QuestionAnalysis';
+import QuestionAnalysis from './QuestionAnalysis';
 
 function formatDuration(seconds) {
   if (!seconds) return "—";

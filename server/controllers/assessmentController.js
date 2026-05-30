@@ -7,25 +7,25 @@ exports.getAssessments = async (req, res) => {
       querySheets('getAssessments'),
       querySheets('getQuestions')
     ]);
-    
+
     let assessments = resData.data || [];
     const allQuestions = qRes.data || [];
-    
+
     assessments = assessments.map(a => {
       const aId = String(a._id);
       const matchedQuestions = allQuestions.filter(q => String(q.assessment) === aId || String(q.assessmentId) === aId);
-      
+
       let assTo = [];
-      try { assTo = typeof a.assignedTo === 'string' ? JSON.parse(a.assignedTo) : (a.assignedTo || []); } catch(e){}
+      try { assTo = typeof a.assignedTo === 'string' ? JSON.parse(a.assignedTo) : (a.assignedTo || []); } catch (e) { }
       return { ...a, questions: matchedQuestions, assignedTo: assTo };
     });
 
     // Reverse sort by createdAt
     assessments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    
+
     res.json({ success: true, assessments });
-  } catch (err) { 
-    res.status(500).json({ success: false, message: err.message }); 
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -34,7 +34,7 @@ exports.getMyAssessments = async (req, res) => {
     const empRes = await querySheets('getEmployees');
     const employees = empRes.data || [];
     const employee = employees.find(e => String(e._id) === String(req.user._id));
-    
+
     if (!employee) return res.status(404).json({ success: false, message: 'Employee not found' });
 
     const [resultRes, assRes, qRes] = await Promise.all([
@@ -42,10 +42,10 @@ exports.getMyAssessments = async (req, res) => {
       querySheets('getAssessments'),
       querySheets('getQuestions')
     ]);
-    
+
     const allResults = resultRes.data || [];
     const myResults = allResults.filter(r => String(r.employeeMongoId || r.employee) === String(req.user._id));
-    
+
     const completedIds = myResults
       .filter(r => r.status !== 'in-progress')
       .map(r => String(r.assessmentId || r.assessment || ''));
@@ -58,11 +58,11 @@ exports.getMyAssessments = async (req, res) => {
       } else if (Array.isArray(employee.assignedAssessments)) {
         assignedIds = employee.assignedAssessments;
       }
-    } catch(e) {}
+    } catch (e) { }
 
     const allAssessments = assRes.data || [];
     const allQuestions = qRes.data || [];
-    
+
     const myAssessments = allAssessments.filter(a => {
       let assTo = [];
       try {
@@ -71,7 +71,7 @@ exports.getMyAssessments = async (req, res) => {
         } else if (Array.isArray(a.assignedTo)) {
           assTo = a.assignedTo;
         }
-      } catch (e) {}
+      } catch (e) { }
       const assToMapped = assTo.map(String);
       return assignedIds.includes(String(a._id)) || assToMapped.includes(String(req.user._id));
     });
@@ -119,18 +119,18 @@ exports.getAssessment = async (req, res) => {
     const assRes = await querySheets('getAssessments');
     const allAssessments = assRes.data || [];
     const assessment = allAssessments.find(a => String(a._id) === String(req.params.id));
-    
+
     if (!assessment) return res.status(404).json({ success: false, message: 'Assessment not found' });
-    
+
     // Fetch questions
     const qRes = await querySheets('getQuestions', req.params.id ? { assessmentId: req.params.id } : {});
     const allQuestions = qRes.data || [];
     let questions = allQuestions.filter(q => String(q.assessment) === String(req.params.id) || String(q.assessmentId) === String(req.params.id));
-    
+
     // Parse options correctly
     const parsedQuestions = questions.map(q => {
       if (typeof q.options === 'string') {
-        try { q.options = JSON.parse(q.options); } catch(e) {}
+        try { q.options = JSON.parse(q.options); } catch (e) { }
       }
       if (Array.isArray(q.options) && q.options.length > 0 && typeof q.options[0] !== 'object') {
         const correctIdx = parseInt(q.correctOptionIndex !== undefined ? q.correctOptionIndex : 0, 10);
@@ -161,7 +161,7 @@ exports.getAssessment = async (req, res) => {
     if (req.user.role === 'employee') {
       let emQs = [...parsedQuestions];
       if (assessment.isRandomized) emQs = emQs.sort(() => Math.random() - 0.5);
-      
+
       const sanitized = emQs.map(q => {
         return {
           _id: q._id || q.id || String(Math.random()), title: q.title, type: q.type,
@@ -172,7 +172,7 @@ exports.getAssessment = async (req, res) => {
       assessment.questions = sanitized;
       return res.json({ success: true, assessment });
     }
-    
+
     assessment.questions = parsedQuestions;
     res.json({ success: true, assessment });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -209,9 +209,9 @@ exports.createAssessment = async (req, res) => {
     }
 
     res.status(201).json({ success: true, assessment: assessmentData });
-  } catch (error) { 
+  } catch (error) {
     console.error('CREATE ASSESSMENT ERROR:', error);
-    res.status(500).json({ success: false, message: error.message }); 
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -241,16 +241,16 @@ exports.bulkAssignExam = async (req, res) => {
   try {
     const { employeeIds } = req.body;
     const assessmentId = req.params.id;
-    
+
     const empRes = await querySheets('getEmployees');
     const employees = empRes.data || [];
-    
+
     const targetEmployees = employees.filter(e => employeeIds.includes(String(e._id)));
-    
+
     for (const emp of targetEmployees) {
       let assigned = [];
-      try { assigned = typeof emp.assignedAssessments === 'string' ? JSON.parse(emp.assignedAssessments) : (emp.assignedAssessments || []); } catch(e){}
-      
+      try { assigned = typeof emp.assignedAssessments === 'string' ? JSON.parse(emp.assignedAssessments) : (emp.assignedAssessments || []); } catch (e) { }
+
       if (!assigned.includes(assessmentId)) {
         assigned.push(assessmentId);
         await querySheets('updateEmployee', { _id: emp._id, assignedAssessments: assigned });
@@ -260,11 +260,11 @@ exports.bulkAssignExam = async (req, res) => {
     const assRes = await querySheets('getAssessments');
     const assessments = assRes.data || [];
     const assessment = assessments.find(a => String(a._id) === String(assessmentId));
-    
+
     if (assessment) {
       let assTo = [];
-      try { assTo = typeof assessment.assignedTo === 'string' ? JSON.parse(assessment.assignedTo) : (assessment.assignedTo || []); } catch(e){}
-      
+      try { assTo = typeof assessment.assignedTo === 'string' ? JSON.parse(assessment.assignedTo) : (assessment.assignedTo || []); } catch (e) { }
+
       let changed = false;
       for (const id of employeeIds) {
         if (!assTo.includes(id)) {
@@ -287,7 +287,7 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const assRes = await querySheets('getAssessments');
     const activeAssessments = (assRes.data || []).filter(a => a.status === 'active' || a.status === 'scheduled').length;
-    
+
     const empRes = await querySheets('getEmployees');
     const totalEmployees = (empRes.data || []).filter(e => e.role === 'employee').length;
 
@@ -307,8 +307,8 @@ exports.startExam = async (req, res) => {
 
     const resRes = await querySheets('getResults');
     const allResults = resRes.data || [];
-    const alreadyAttempted = allResults.find(r => 
-      String(r.employee || r.employeeMongoId) === String(req.user._id) && 
+    const alreadyAttempted = allResults.find(r =>
+      String(r.employee || r.employeeMongoId) === String(req.user._id) &&
       String(r.assessmentId || r.assessment) === String(assessmentId)
     );
     if (alreadyAttempted) {
@@ -317,14 +317,14 @@ exports.startExam = async (req, res) => {
         message: "Exam already attempted or in-progress."
       });
     }
-    
+
     const resultId = Date.now().toString();
     const assRes = await querySheets('getAssessments');
     const assessment = (assRes.data || []).find(a => String(a._id) === String(assessmentId));
 
     const empRes = await querySheets('getEmployees');
     const employee = (empRes.data || []).find(e => String(e._id) === String(req.user._id));
-    
+
     const newResult = {
       _id: resultId,
       employee: req.user._id.toString(),
@@ -345,7 +345,7 @@ exports.startExam = async (req, res) => {
     };
 
     await querySheets('submitResult', newResult);
-    
+
     // Clear the cache so /assessments/my updates immediately to "in-progress"
     if (req.user && req.user._id) {
       const { clearUserCache } = require('../middleware/cache');
@@ -357,7 +357,6 @@ exports.startExam = async (req, res) => {
 };
 
 exports.submitExam = async (req, res) => {
-  // Currently handled in index.js at /api/submit-exam. 
-  // We can just redirect or implement it here if the route hits it.
-  res.status(501).json({ success: false, message: 'Use /api/submit-exam route directly' });
+  // Redirect to /api/submit-exam with 308 (Permanent Redirect) to preserve POST method and body
+  res.redirect(308, '/api/submit-exam');
 };
