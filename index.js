@@ -53,20 +53,9 @@ const sheetsWebhookRoutes = require('./routes/sheetsWebhook');
 const app = express();
 const compression = require('compression');
 
-// ── Intercept ALL OPTIONS preflight BEFORE compression / anything else ──
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
-  res.setHeader('Access-Control-Max-Age', '86400');
-  return res.sendStatus(204);
-});
-
 app.use(compression());
 
-// ── CORS: Secure allowed origins containing local dev and Render environments ──
+// ── CORS: Standardized robust CORS middleware configuration ──
 const ALLOWED_ORIGINS = [
   'https://caponlinetest.onrender.com',
   'http://localhost:3000',
@@ -74,30 +63,21 @@ const ALLOWED_ORIGINS = [
   process.env.CLIENT_URL
 ].filter(Boolean);
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  // Set explicit dynamic reflection to guarantee matching origin (avoids wildcard cookie limitations)
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-  
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control'
-  );
-  res.setHeader('Access-Control-Max-Age', '86400'); // 24h preflight cache
-  
-  // Respond immediately to preflight
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests (like server-to-server or postman pings where origin is undefined)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      // In production, reject unauthorized cross-origin requests cleanly
+      callback(new Error('Blocked by CORS policy'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'Cache-Control'],
+  maxAge: 86400 // 24 hours preflight cache
+}));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
