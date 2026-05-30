@@ -18,26 +18,8 @@ export default function EmployeeDashboard() {
   const navigate = useNavigate();
   const loadAbortController = useRef(new AbortController());
 
-  const [assessments, setAssessments] = useState(() => {
-    try {
-      const cached = localStorage.getItem(LS_ASSESSMENTS_KEY);
-      if (!cached) return [];
-      const timestamp = localStorage.getItem(LS_ASSESSMENTS_TIMESTAMP);
-      const age = timestamp ? Date.now() - parseInt(timestamp) : Infinity;
-      if (age > 30000) { // ✅ 30 seconds — was 120s, prevents stale cache hiding new assessments
-        localStorage.removeItem(LS_ASSESSMENTS_KEY);
-        localStorage.removeItem(LS_ASSESSMENTS_TIMESTAMP);
-        return [];
-      }
-      return JSON.parse(cached);
-    } catch (error) {
-      return [];
-    }
-  });
-
-  const [loading, setLoading] = useState(() => {
-    return !localStorage.getItem(LS_ASSESSMENTS_KEY);
-  });
+  const [assessments, setAssessments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
@@ -61,8 +43,6 @@ export default function EmployeeDashboard() {
       const sorted = list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
       setAssessments(sorted);
-      localStorage.setItem(LS_ASSESSMENTS_KEY, JSON.stringify(sorted));
-      localStorage.setItem(LS_ASSESSMENTS_TIMESTAMP, Date.now().toString());
 
       const notifs = [];
       sorted.forEach(a => {
