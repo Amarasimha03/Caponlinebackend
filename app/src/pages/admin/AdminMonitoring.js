@@ -20,10 +20,17 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         video.srcObject = candidate.cameraStream;
         video.muted = true;
         video.playsInline = true;
-        video.onloadedmetadata = () => {
-          video.play().catch(e => console.warn("Card camera play error:", e));
-        };
-        video.play().catch(e => console.warn("Card camera fallback play error:", e));
+        const playVideo = () => video.play().catch(e => console.warn("Card camera play error:", e));
+        video.onloadedmetadata = playVideo;
+        // ✅ onunmute: remote tracks start muted — re-play when first RTP data arrives
+        const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
+        if (cameraTrack) {
+          cameraTrack.onunmute = () => {
+            console.log('[AdminMonitoring] Camera track unmuted — replaying');
+            playVideo();
+          };
+        }
+        playVideo();
       }
     } else if (cameraRef.current && !candidate.cameraStream) {
       cameraRef.current.srcObject = null;
@@ -34,10 +41,17 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         video.srcObject = candidate.screenStream;
         video.muted = true;
         video.playsInline = true;
-        video.onloadedmetadata = () => {
-          video.play().catch(e => console.warn("Card screen play error:", e));
-        };
-        video.play().catch(e => console.warn("Card screen fallback play error:", e));
+        const playVideo = () => video.play().catch(e => console.warn("Card screen play error:", e));
+        video.onloadedmetadata = playVideo;
+        // ✅ onunmute: re-play when first screen RTP data arrives
+        const screenTrack = candidate.screenStream.getVideoTracks()[0];
+        if (screenTrack) {
+          screenTrack.onunmute = () => {
+            console.log('[AdminMonitoring] Screen track unmuted — replaying');
+            playVideo();
+          };
+        }
+        playVideo();
       }
     } else if (screenRef.current && !candidate.screenStream) {
       screenRef.current.srcObject = null;
@@ -175,10 +189,17 @@ export default function AdminMonitoring() {
             video.srcObject = currentCandidate.cameraStream;
             video.muted = true;
             video.playsInline = true;
-            video.onloadedmetadata = () => {
-              video.play().catch(e => console.warn("Camera play error:", e));
-            };
-            video.play().catch(e => console.warn("Camera fallback play error:", e));
+            const playCamera = () => video.play().catch(e => console.warn("Camera play error:", e));
+            video.onloadedmetadata = playCamera;
+            // ✅ Re-play when track unmutes (first RTP packet received)
+            const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
+            if (cameraTrack) {
+              cameraTrack.onunmute = () => {
+                console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
+                playCamera();
+              };
+            }
+            playCamera();
           }
         }
         if (selectedScreenRef.current && currentCandidate.screenStream) {
@@ -187,10 +208,17 @@ export default function AdminMonitoring() {
             video.srcObject = currentCandidate.screenStream;
             video.muted = true;
             video.playsInline = true;
-            video.onloadedmetadata = () => {
-              video.play().catch(e => console.warn("Screen play error:", e));
-            };
-            video.play().catch(e => console.warn("Screen fallback play error:", e));
+            const playScreen = () => video.play().catch(e => console.warn("Screen play error:", e));
+            video.onloadedmetadata = playScreen;
+            // ✅ Re-play when track unmutes (first RTP packet received)
+            const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
+            if (screenTrack) {
+              screenTrack.onunmute = () => {
+                console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
+                playScreen();
+              };
+            }
+            playScreen();
           }
         }
       }

@@ -176,7 +176,7 @@ const useMonitoringStore = create((set, get) => ({
       peerConnections[employeeId] = pc;
 
       pc.ontrack = (event) => {
-        console.log(`[MonitoringStore] Received track from ${employeeId}`, event.track.kind, event.track.label);
+        console.log(`[MonitoringStore] Received track from ${employeeId}`, event.track.kind, event.track.label, 'muted:', event.track.muted);
 
         const track = event.track;
         if (track.kind !== 'video') return; // Only map video tracks
@@ -192,7 +192,7 @@ const useMonitoringStore = create((set, get) => ({
 
         if (!registry.has(stream.id)) {
           registry.add(stream.id);
-          
+
           let isCamera = false;
           if (streamIds.cameraStreamId && stream.id === streamIds.cameraStreamId) {
             isCamera = true;
@@ -202,19 +202,32 @@ const useMonitoringStore = create((set, get) => ({
             isCamera = registry.size === 1;
           }
 
-          set((state) => {
-            const updated = state.activeExams.map((e) => {
-              if (e.employeeId !== employeeId) return e;
-              if (isCamera) {
-                console.log(`[MonitoringStore] Setting CAMERA stream for ${employeeId} (stream: ${stream.id})`);
-                return { ...e, cameraStream: stream, webrtcConnected: true };
-              } else {
-                console.log(`[MonitoringStore] Setting SCREEN stream for ${employeeId} (stream: ${stream.id})`);
-                return { ...e, screenStream: stream, webrtcConnected: true };
-              }
+          const applyStream = () => {
+            set((state) => {
+              const updated = state.activeExams.map((e) => {
+                if (e.employeeId !== employeeId) return e;
+                if (isCamera) {
+                  console.log(`[MonitoringStore] Setting CAMERA stream for ${employeeId} (stream: ${stream.id})`);
+                  return { ...e, cameraStream: stream, webrtcConnected: true };
+                } else {
+                  console.log(`[MonitoringStore] Setting SCREEN stream for ${employeeId} (stream: ${stream.id})`);
+                  return { ...e, screenStream: stream, webrtcConnected: true };
+                }
+              });
+              return { activeExams: updated };
             });
-            return { activeExams: updated };
-          });
+          };
+
+          // Apply stream immediately on track arrival
+          applyStream();
+
+          // ✅ Re-trigger on 'unmute': remote tracks begin in muted state until first RTP packet arrives.
+          // This fires a state re-render at the exact moment video data starts flowing,
+          // fixing black screens even when the connection reports P2P Connected.
+          track.onunmute = () => {
+            console.log(`[MonitoringStore] Track UNMUTED for ${employeeId} — refreshing stream state`);
+            applyStream();
+          };
         }
       };
 
