@@ -22,7 +22,23 @@ export default function LoginPage() {
         // If server is cold-starting, track the timeout to show warm-up notification
         const timer = setTimeout(() => setIsWakingUp(true), 2500);
 
-        await fetch(targetUrl).catch(() => {});
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+          try {
+            const res = await fetch(targetUrl);
+            if (res.ok) {
+              clearTimeout(timer);
+              setIsWakingUp(false);
+              return;
+            }
+          } catch (err) {
+            // Wait 3 seconds before retrying if this is not the last attempt
+            if (i < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+          }
+        }
+        
         clearTimeout(timer);
         setIsWakingUp(false);
       } catch (err) {

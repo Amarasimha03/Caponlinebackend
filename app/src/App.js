@@ -62,7 +62,18 @@ function App() {
       try {
         const fallbackUrl = "https://testbackend-a1nl.onrender.com/api/health";
         const targetUrl = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL.replace(/\/$/, '')}/health` : fallbackUrl;
-        fetch(targetUrl).catch(() => {});
+        
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+          try {
+            const res = await fetch(targetUrl);
+            if (res.ok) return;
+          } catch (err) {
+            if (i < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+          }
+        }
       } catch (err) {}
     };
     wakeUpBackend();
