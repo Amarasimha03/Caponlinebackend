@@ -5,7 +5,8 @@
 //              results   | violations  | sessions  | monitoring
 // ============================================================
 
-var SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+// ✅ Replace this with your actual Spreadsheet ID
+var SPREADSHEET_ID = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms';
 
 // ── Entry Points ────────────────────────────────────────────
 function doGet(e) {
