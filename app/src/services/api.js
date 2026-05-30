@@ -26,8 +26,11 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = error.config?.url || "";
     const isLoginUrl = url.includes("/auth/login") || url === "/login";
+    // Background refresh calls (fetchMe) should NEVER trigger auto-logout —
+    // they run during Render cold starts and transient 401s should not evict the session
+    const isBackgroundRefresh = error.config?._isBackgroundRefresh === true;
 
-    if (status === 401 && !isLoginUrl) {
+    if (status === 401 && !isLoginUrl && !isBackgroundRefresh) {
       let user = null;
       try { user = JSON.parse(localStorage.getItem('user')); } catch (e) { }
 

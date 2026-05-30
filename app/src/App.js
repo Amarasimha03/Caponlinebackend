@@ -31,12 +31,24 @@ const NavigateToResult = () => {
 
 const ProtectedRoute = ({ children, role }) => {
   const { user, token, isLoading } = useAuthStore();
-  if (isLoading && !user) {
+
+  // Fallback: read directly from localStorage in case Zustand hasn't hydrated yet
+  const localToken = token || localStorage.getItem('token');
+  const localUser = user || (() => {
+    try {
+      const s = localStorage.getItem('portal_user') || localStorage.getItem('user');
+      if (!s || s === 'undefined') return null;
+      return JSON.parse(s);
+    } catch { return null; }
+  })();
+
+  // Only block render if we're loading AND have no user anywhere (neither store nor localStorage)
+  if (isLoading && !localUser) {
     return <div className="loading-center"><div className="loading-spinner" /></div>;
   }
-  if (!token) return <Navigate to="/login" replace />;
-  if (role && user && user.role !== role) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  if (!localToken) return <Navigate to="/login" replace />;
+  if (role && localUser && localUser.role !== role) {
+    return <Navigate to={localUser.role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
   return children;
 };

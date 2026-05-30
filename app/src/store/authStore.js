@@ -15,7 +15,7 @@ const useAuthStore = create((set, get) => ({
     }
   })(),
   token:     localStorage.getItem(LS_TOKEN_KEY),
-  isLoading: false,
+  isLoading: false,  // Always false on init — user/token are hydrated from localStorage synchronously
   error:     null,
 
   login: async (email, password) => {
@@ -106,30 +106,28 @@ const useAuthStore = create((set, get) => ({
   fetchMe: async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    const hasUser = !!get().user;
-    if (!hasUser) {
-      set({ isLoading: true });
-    }
+
+    // Silent background refresh — never set isLoading=true here.
+    // The user object is already hydrated from localStorage on store init,
+    // so the page renders instantly on refresh without any loading flicker or redirect.
     try {
-      const { data } = await api.get('/auth/me');
-      // Persist user to localStorage so it survives refreshes
+      const { data } = await api.get('/auth/me', {
+        // Mark this request so the 401 interceptor in api.js skips auto-logout
+        _isBackgroundRefresh: true,
+      });
+      // Update in-memory user and persist fresh data
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('portal_user', JSON.stringify(data.user));
-      set({ user: data.user, isLoading: false });
+      set({ user: data.user });
 
-      // Verify session with Google Sheets Backend (non-blocking, do NOT force logout unless explicitly requested via Logout button)
+      // Non-blocking session sync with Google Sheets
       if (data.user?._id) {
-        try {
-          await api.get(`/state/session/${data.user._id}`);
-          // We fetch it but we do NOT automatically evict the local session.
-          // This ensures that active users are never logged out unexpectedly due to sheet sync lag/issues.
-        } catch {
-          // Session check failed — continue with local session
-        }
+        api.get(`/state/session/${data.user._id}`).catch(() => {});
       }
     } catch (err) {
-      // Do NOT clear user/token on error to ensure users stay logged in strictly until they manually click the Logout button.
-      set({ isLoading: false });
+      // Network error or server cold-starting on Render — keep the existing local session.
+      // Users should only be logged out when they explicitly click Sign Out.
+      console.warn('[AuthStore] fetchMe failed — keeping local session:', err.message);
     }
   },
 
