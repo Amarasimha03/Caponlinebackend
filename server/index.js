@@ -115,6 +115,16 @@ app.use((req, res, next) => {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// ── Top Level APIs (guarantee connectivity on cold starts) ──
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'OK',
+    message: 'Server running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Server startup logic
 async function startServer() {
   console.log('✅ Node server starting in proxy mode (bypassing local DB cache)');
@@ -385,9 +395,7 @@ async function startServer() {
   app.post('/api/results/submit', protect, submitExamHandler);
 
 
-  app.get('/api/health', (req, res) =>
-    res.json({ status: 'OK', timestamp: new Date().toISOString() })
-  );
+
 
   // Serve Static Assets with aggressive browser caching in production
   app.use(express.static(clientBuildPath, {
