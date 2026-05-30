@@ -19,6 +19,7 @@ import { enterFullscreen, exitFullscreen } from '../../../managers/FullscreenMan
 
 import { SetupPage } from './SetupPage';
 import { ExamLayout } from './ExamLayout';
+import { ResultModal } from './ResultModal';
 
 export default function ExamPage() {
   const { assessmentId } = useParams();
@@ -34,6 +35,7 @@ export default function ExamPage() {
   const [answers, setAnswers] = useState({});
   const [resultId, setResultId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resultModalData, setResultModalData] = useState(null);
   const [violations, setViolations] = useState(0);
 
   const socketRef = useRef(null);
@@ -74,16 +76,26 @@ export default function ExamPage() {
         broadcastExamStart();
       }
     };
+
+    const handleRenegotiate = () => {
+      console.log('📡 WebRTC renegotiation requested by admin');
+      if (streamRef.current || screenStreamRef.current) {
+        webrtcManagerRef.current?.setupWebRTC(streamRef.current, screenStreamRef.current);
+      }
+    };
+
     socketRef.current?.on('connect', handleConnect);
     socketRef.current?.on('webrtc:answer', (data) => webrtcManagerRef.current?.handleAnswer(data));
     socketRef.current?.on('webrtc:ice-candidate', (data) => webrtcManagerRef.current?.handleIceCandidate(data));
+    socketRef.current?.on('webrtc:request-renegotiate', handleRenegotiate);
 
     return () => {
       socketRef.current?.off('connect', handleConnect);
       socketRef.current?.off('webrtc:answer');
       socketRef.current?.off('webrtc:ice-candidate');
+      socketRef.current?.off('webrtc:request-renegotiate', handleRenegotiate);
     };
-  }, [phase, user, assessmentId, streamRef, broadcastExamStart]);
+  }, [phase, user, assessmentId, streamRef, screenStreamRef, broadcastExamStart]);
 
   useEffect(() => {
     (async () => {
@@ -128,7 +140,6 @@ export default function ExamPage() {
   const terminateExam = useCallback(async (reason = "Terminated") => {
     if (submitting) return;
     setSubmitting(true);
-    setPhase('submitted');
 
     try {
       const formattedAnswers = Object.keys(answers).map(qId => ({
@@ -136,7 +147,7 @@ export default function ExamPage() {
         selectedAnswer: answers[qId]?.selectedOptions.length === 1 ? answers[qId].selectedOptions[0] : answers[qId].selectedOptions
       }));
 
-      await api.post(`/submit-exam`, {
+      const response = await api.post(`/submit-exam`, {
         answers: formattedAnswers,
         violations,
         resultId,
@@ -152,15 +163,14 @@ export default function ExamPage() {
       });
 
       socketRef.current?.emit('exam:cancelled', { employeeId: user?._id, assessmentId });
-    } catch (err) {
-      console.warn("Failed to submit exam payload:", err);
-    } finally {
+
+      // Clean up streams and fullscreen
       webrtcManagerRef.current?.cleanup();
       await cleanupExamSession({
         stopCamera: stopWebcam,
         stopScreenShare: stopScreenShare,
-        stopTimer: () => { }, // Handled inherently or passed if TimerManager is refactored further
-        disconnectSocket: () => { }, // Keep alive or offload appropriately
+        stopTimer: () => { },
+        disconnectSocket: () => { },
         clearLocalStorage: () => {
           localStorage.removeItem(LS_EXAM_KEY);
           localStorage.removeItem('employee_assessments_cache');
@@ -168,14 +178,47 @@ export default function ExamPage() {
         },
         exitFullscreen: exitFullscreen
       });
+
+      // Show animated result modal for completed exams
       if (reason === 'Completed') {
-        navigate(`/employee/result/${assessmentId}`, { replace: true });
+        const resultData = response?.data;
+        setPhase('submitted');
+        setResultModalData({
+          percentage: parseFloat(resultData?.percentage) || 0,
+          passed: resultData?.passed === true || resultData?.passed === 'true' || String(resultData?.passed).toLowerCase() === 'true',
+          totalScore: parseInt(resultData?.totalScore) || 0,
+          totalMarks: parseInt(resultData?.totalMarks) || parseInt(resultData?.totalQuestions) || questions.length,
+          correctCount: parseInt(resultData?.correctCount) || 0,
+          wrongCount: parseInt(resultData?.wrongCount) || 0,
+          unansweredCount: parseInt(resultData?.unansweredCount) || (questions.length - Object.keys(answers).length),
+          totalQuestions: parseInt(resultData?.totalQuestions) || questions.length,
+        });
       } else {
+        setPhase('submitted');
         navigate("/employee/dashboard", { replace: true });
       }
+    } catch (err) {
+      console.warn("Failed to submit exam payload:", err);
+      // Fallback cleanup on error
+      webrtcManagerRef.current?.cleanup();
+      await cleanupExamSession({
+        stopCamera: stopWebcam,
+        stopScreenShare: stopScreenShare,
+        stopTimer: () => { },
+        disconnectSocket: () => { },
+        clearLocalStorage: () => {
+          localStorage.removeItem(LS_EXAM_KEY);
+          localStorage.removeItem('employee_assessments_cache');
+          localStorage.removeItem('employee_assessments_timestamp');
+        },
+        exitFullscreen: exitFullscreen
+      });
+      navigate("/employee/dashboard", { replace: true });
+    } finally {
+      setSubmitting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submitting, answers, violations, resultId, assessmentId, user, stopWebcam, stopScreenShare, logout, navigate, LS_EXAM_KEY]);
+  }, [submitting, answers, violations, resultId, assessmentId, user, stopWebcam, stopScreenShare, logout, navigate, LS_EXAM_KEY, questions]);
 
   const { timer, setTimer } = useExamTimer({
     initialTimer: assessment?.duration ? assessment.duration * 60 : 1800,
@@ -208,10 +251,26 @@ export default function ExamPage() {
     if (currentQ < questions.length - 1) {
       setCurrentQ(prev => prev + 1);
       setTimer(assessment?.timePerQuestion || 30);
-    } else {
+    } else if (isAutoTimeout) {
+      // Only auto-submit on timeout from last question
       terminateExam("Completed");
     }
+    // If user clicks Next on last question, don't auto-submit — they use the Submit button
   }, [currentQ, questions, answers, assessment, setTimer, terminateExam]);
+
+  const handlePrev = useCallback(() => {
+    if (currentQ > 0) {
+      setCurrentQ(prev => prev - 1);
+      setTimer(assessment?.timePerQuestion || 30);
+    }
+  }, [currentQ, assessment, setTimer]);
+
+  const handleJumpTo = useCallback((index) => {
+    if (index >= 0 && index < questions.length) {
+      setCurrentQ(index);
+      setTimer(assessment?.timePerQuestion || 30);
+    }
+  }, [questions.length, assessment, setTimer]);
 
   const handleSelect = useCallback((questionId, optionIndex) => {
     const q = questions[currentQ];
@@ -399,21 +458,34 @@ export default function ExamPage() {
   }
 
   return (
-    <ExamLayout
-      assessment={assessment}
-      questionsCount={questions.length}
-      currentQ={currentQ}
-      violations={violations}
-      maxViolations={maxViolations}
-      videoRef={videoRef}
-      streamRef={streamRef}
-      question={questions[currentQ]}
-      answers={answers}
-      handleSelect={handleSelect}
-      handleNext={() => handleNext(false)}
-      submitting={submitting}
-      submitExamAutomatically={() => terminateExam('User Cancelled Exam')}
-      timer={timer}
-    />
+    <>
+      <ExamLayout
+        assessment={assessment}
+        questionsCount={questions.length}
+        currentQ={currentQ}
+        violations={violations}
+        maxViolations={maxViolations}
+        videoRef={videoRef}
+        streamRef={streamRef}
+        question={questions[currentQ]}
+        answers={answers}
+        handleSelect={handleSelect}
+        handleNext={() => handleNext(false)}
+        handlePrev={handlePrev}
+        handleJumpTo={handleJumpTo}
+        submitting={submitting}
+        submitExam={() => terminateExam('Completed')}
+        cancelExam={() => terminateExam('User Cancelled Exam')}
+        timer={timer}
+        user={user}
+        questions={questions}
+      />
+      <ResultModal
+        show={!!resultModalData}
+        result={resultModalData}
+        onViewDetails={() => navigate(`/employee/result/${assessmentId}`, { replace: true })}
+        onDashboard={() => navigate('/employee/dashboard', { replace: true })}
+      />
+    </>
   );
 }

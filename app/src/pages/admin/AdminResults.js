@@ -159,7 +159,7 @@ export default function AdminResults() {
     const arr = filteredAndSorted;
     if (!arr.length) return null;
     const passed = arr.filter(r => r.passed === true || r.passed === 'true').length;
-    const avgPct = Math.round(arr.reduce((s, r) => s + (r.percentage || 0), 0) / arr.length);
+    const avgPct = Math.round(arr.reduce((s, r) => s + (parseFloat(r.percentage) || 0), 0) / arr.length);
     const avgTime = Math.round(arr.reduce((s, r) => s + (parseInt(r.completionTime) || 0), 0) / arr.length);
     return { total: arr.length, passed, failed: arr.length - passed, avgPct, avgTime };
   }, [filteredAndSorted]);

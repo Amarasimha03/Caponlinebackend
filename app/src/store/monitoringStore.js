@@ -280,7 +280,11 @@ const useMonitoringStore = create((set, get) => ({
       }
       delete peerStreamRegistry[data.employeeId];
       set((state) => ({
-        activeExams: state.activeExams.filter((e) => e.employeeId !== data.employeeId),
+        activeExams: state.activeExams.map((e) =>
+          e.employeeId === data.employeeId
+            ? { ...e, webrtcConnected: false, cameraStream: null, screenStream: null }
+            : e
+        ),
       }));
     });
 

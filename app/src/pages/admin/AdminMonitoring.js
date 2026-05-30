@@ -1,12 +1,16 @@
 import React, { useEffect, useState, useRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, User, Camera, CameraOff, Maximize2, X, Activity, ShieldAlert, Monitor, Loader } from 'lucide-react';
+import { AlertTriangle, User, Camera, Maximize2, X, Activity, ShieldAlert, Monitor } from 'lucide-react';
 import useMonitoringStore from '../../store/monitoringStore';
 
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
 const CandidateCard = memo(({ candidate, onMaximize }) => {
   const cameraRef = useRef(null);
   const screenRef = useRef(null);
+
+  const hasCamera = !!candidate.cameraStream;
+  const hasScreen = !!candidate.screenStream;
+  const hasAnyStream = hasCamera || hasScreen;
 
   // ✅ Include employeeId in deps so srcObject reattaches after navigation away/back
   useEffect(() => {
@@ -37,66 +41,52 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         height: '100%'
       }}>
 
-      {/* Media Container: Split view for Camera and Screen */}
-      <div style={{
-        width: '100%', height: 160, display: 'flex', background: '#000', position: 'relative'
-      }}>
-        {/* Camera Video */}
-        <div style={{ flex: 1, borderRight: '1px solid #333', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-          <video ref={cameraRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-          {!candidate.cameraStream && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              {candidate.webrtcConnected
-                ? <Loader size={18} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
-                : <CameraOff size={22} style={{ color: '#ef4444' }} />}
-              <span style={{ fontSize: 9, color: candidate.webrtcConnected ? '#f59e0b' : '#ef4444' }}>
-                {candidate.webrtcConnected ? 'Loading...' : 'No Camera'}
-              </span>
-            </div>
-          )}
-          <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Camera size={10} /> CAMERA
-          </div>
-        </div>
-
-        {/* Screen Video */}
-        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-          <video ref={screenRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          {!candidate.screenStream && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              {candidate.webrtcConnected
-                ? <Loader size={18} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
-                : <Monitor size={22} style={{ color: '#ef4444' }} />}
-              <span style={{ fontSize: 9, color: candidate.webrtcConnected ? '#f59e0b' : '#ef4444' }}>
-                {candidate.webrtcConnected ? 'Loading...' : 'No Screen'}
-              </span>
-            </div>
-          )}
-          <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Monitor size={10} /> SCREEN
-          </div>
-        </div>
-
-        {/* Header overlay badges */}
-        <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 8 }}>
-          <span className={`badge ${candidate.webrtcConnected ? 'badge-success' : 'badge-danger animate-pulse'}`} style={{ fontSize: 9, padding: '2px 6px' }}>
-            {candidate.webrtcConnected ? 'LIVE P2P' : 'CONNECTING...'}
-          </span>
-          {candidate.violationCount > 0 && (
-            <span className="badge badge-danger" style={{ fontSize: 9, padding: '2px 6px' }}>
-              {candidate.violationCount} Violations
-            </span>
-          )}
-        </div>
-
-        <button onClick={() => onMaximize(candidate)} style={{
-          position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)',
-          border: 'none', borderRadius: 8, padding: 6, cursor: 'pointer', color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
+      {/* Media Container: Split view or single view or hidden */}
+      {hasAnyStream && (
+        <div style={{
+          width: '100%', height: 160, display: 'flex', background: '#000', position: 'relative'
         }}>
-          <Maximize2 size={14} />
-        </button>
-      </div>
+          {/* Camera Video */}
+          {hasCamera && (
+            <div style={{ flex: 1, borderRight: hasScreen ? '1px solid #333' : 'none', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <video ref={cameraRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+              <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Camera size={10} /> CAMERA
+              </div>
+            </div>
+          )}
+
+          {/* Screen Video */}
+          {hasScreen && (
+            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <video ref={screenRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Monitor size={10} /> SCREEN
+              </div>
+            </div>
+          )}
+
+          {/* Header overlay badges */}
+          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 8 }}>
+            <span className={`badge ${candidate.webrtcConnected ? 'badge-success' : 'badge-danger animate-pulse'}`} style={{ fontSize: 9, padding: '2px 6px' }}>
+              {candidate.webrtcConnected ? 'LIVE P2P' : 'CONNECTING...'}
+            </span>
+            {candidate.violationCount > 0 && (
+              <span className="badge badge-danger" style={{ fontSize: 9, padding: '2px 6px' }}>
+                {candidate.violationCount} Violations
+              </span>
+            )}
+          </div>
+
+          <button onClick={() => onMaximize(candidate)} style={{
+            position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)',
+            border: 'none', borderRadius: 8, padding: 6, cursor: 'pointer', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Maximize2 size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Footer Details */}
       <div style={{ padding: '12px', borderTop: '1px solid var(--border-light)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -104,11 +94,23 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
           <div className="avatar" style={{ width: 28, height: 28, fontSize: 12, background: 'var(--gradient-primary)', color: '#fff', fontWeight: 700 }}>
             {candidate.employeeName?.[0]}
           </div>
-          <div style={{ overflow: 'hidden' }}>
+          <div style={{ overflow: 'hidden', flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{candidate.employeeName}</div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>ID: {candidate.employeeId?.slice(-6)}</div>
           </div>
         </div>
+        {!hasAnyStream && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            <span className={`badge ${candidate.webrtcConnected ? 'badge-success' : 'badge-danger animate-pulse'}`} style={{ fontSize: 9, padding: '2px 6px' }}>
+              {candidate.webrtcConnected ? 'LIVE P2P' : 'DISCONNECTED'}
+            </span>
+            {candidate.violationCount > 0 && (
+              <span className="badge badge-danger" style={{ fontSize: 9, padding: '2px 6px' }}>
+                {candidate.violationCount} Violations
+              </span>
+            )}
+          </div>
+        )}
         {candidate.lastViolation && (
           <div style={{
             marginTop: 8, padding: '6px 8px', background: 'rgba(239, 68, 68, 0.08)',
