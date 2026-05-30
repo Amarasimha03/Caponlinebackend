@@ -66,19 +66,10 @@ app.options('*', (req, res) => {
 
 app.use(compression());
 
-// ── CORS: Bulletproof — allow any origin, handle OPTIONS preflight ──────────────
-const ALLOWED_ORIGINS = [
-  process.env.CLIENT_URL,
-].filter(Boolean); // removes undefined if CLIENT_URL not set
-
+// ── CORS: Dynamically allow the requesting origin ──────────────
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  // Allow the requesting origin if it's in our list, otherwise allow all
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  }
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
   res.setHeader(
@@ -86,6 +77,7 @@ app.use((req, res, next) => {
     'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control'
   );
   res.setHeader('Access-Control-Max-Age', '86400'); // 24h preflight cache
+  
   // Respond immediately to preflight
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
