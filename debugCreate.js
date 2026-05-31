@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_jwt_secret_onlinetest_2024_change_me';
 const token = jwt.sign({ id: '000000000000000000000000' }, JWT_SECRET, { expiresIn: '30d' });
 
-const baseURL = process.env.API_URL || 'https://capbackend.onrender.com';
+const baseURL = process.env.API_URL || 'https://capbackend-hzho.onrender.com';
 fetch(`${baseURL}/api/assessments`, {
   method: 'POST',
   headers: {
