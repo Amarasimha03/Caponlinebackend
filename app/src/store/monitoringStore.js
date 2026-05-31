@@ -224,10 +224,10 @@ const useMonitoringStore = create((set, get) => ({
           // ✅ Re-trigger on 'unmute': remote tracks begin in muted state until first RTP packet arrives.
           // This fires a state re-render at the exact moment video data starts flowing,
           // fixing black screens even when the connection reports P2P Connected.
-          track.onunmute = () => {
+          track.addEventListener('unmute', () => {
             console.log(`[MonitoringStore] Track UNMUTED for ${employeeId} — refreshing stream state`);
             applyStream();
-          };
+          });
         }
       };
 

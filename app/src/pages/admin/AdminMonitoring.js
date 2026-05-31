@@ -14,6 +14,9 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
 
   // ✅ Include employeeId in deps so srcObject reattaches after navigation away/back
   useEffect(() => {
+    let cleanupCamera = () => {};
+    let cleanupScreen = () => {};
+
     if (cameraRef.current && candidate.cameraStream) {
       const video = cameraRef.current;
       if (video.srcObject !== candidate.cameraStream) {
@@ -25,7 +28,7 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         // ✅ onunmute: remote tracks start muted — re-play when first RTP data arrives
         const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
         if (cameraTrack) {
-          cameraTrack.onunmute = () => {
+          const onUnmute = () => {
             console.log('[AdminMonitoring] Camera track unmuted — replaying');
             if (video.srcObject) {
               const stream = video.srcObject;
@@ -34,12 +37,15 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
             }
             playVideo();
           };
+          cameraTrack.addEventListener('unmute', onUnmute);
+          cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
         }
         playVideo();
       }
     } else if (cameraRef.current && !candidate.cameraStream) {
       cameraRef.current.srcObject = null;
     }
+
     if (screenRef.current && candidate.screenStream) {
       const video = screenRef.current;
       if (video.srcObject !== candidate.screenStream) {
@@ -50,7 +56,7 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         video.onloadedmetadata = playVideo;
         const screenTrack = candidate.screenStream.getVideoTracks()[0];
         if (screenTrack) {
-          screenTrack.onunmute = () => {
+          const onUnmute = () => {
             console.log('[AdminMonitoring] Screen track unmuted — replaying');
             if (video.srcObject) {
               const stream = video.srcObject;
@@ -59,12 +65,19 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
             }
             playVideo();
           };
+          screenTrack.addEventListener('unmute', onUnmute);
+          cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
         }
         playVideo();
       }
     } else if (screenRef.current && !candidate.screenStream) {
       screenRef.current.srcObject = null;
     }
+
+    return () => {
+      cleanupCamera();
+      cleanupScreen();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidate.cameraStream, candidate.screenStream, candidate.employeeId]);
 
@@ -188,6 +201,9 @@ export default function AdminMonitoring() {
 
   // Update selected candidate streams in the modal when it opens
   useEffect(() => {
+    let cleanupCamera = () => {};
+    let cleanupScreen = () => {};
+
     if (selectedCandidate) {
       // Find the latest state of the selected candidate
       const currentCandidate = activeExams.find(e => e.employeeId === selectedCandidate.employeeId);
@@ -202,7 +218,7 @@ export default function AdminMonitoring() {
             video.onloadedmetadata = playCamera;
             const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
             if (cameraTrack) {
-              cameraTrack.onunmute = () => {
+              const onUnmute = () => {
                 console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
                 if (video.srcObject) {
                   const stream = video.srcObject;
@@ -211,6 +227,8 @@ export default function AdminMonitoring() {
                 }
                 playCamera();
               };
+              cameraTrack.addEventListener('unmute', onUnmute);
+              cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
             }
             playCamera();
           }
@@ -225,7 +243,7 @@ export default function AdminMonitoring() {
             video.onloadedmetadata = playScreen;
             const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
             if (screenTrack) {
-              screenTrack.onunmute = () => {
+              const onUnmute = () => {
                 console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
                 if (video.srcObject) {
                   const stream = video.srcObject;
@@ -234,12 +252,19 @@ export default function AdminMonitoring() {
                 }
                 playScreen();
               };
+              screenTrack.addEventListener('unmute', onUnmute);
+              cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
             }
             playScreen();
           }
         }
       }
     }
+
+    return () => {
+      cleanupCamera();
+      cleanupScreen();
+    };
   }, [selectedCandidate, activeExams]);
 
   const violationFeed = useMemo(() => {
