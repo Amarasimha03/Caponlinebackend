@@ -86,9 +86,9 @@ export default function AdminDashboard() {
 
   const statCards = [
     { icon: Users, label: 'Total Employees', value: stats?.totalEmployees || 0, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
-    { icon: FileText, label: 'Assessments', value: stats?.totalAssessments || 0, color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)' },
-    { icon: CheckCircle, label: 'Completed Exams', value: stats?.completedExams || 0, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-    { icon: TrendingUp, label: 'Avg Score', value: `${stats?.avgScore || 0}%`, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    { icon: FileText, label: 'Assessments', value: stats?.activeAssessments || 0, color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)' },
+    { icon: CheckCircle, label: 'Completed Exams', value: stats?.totalExamsTaken || 0, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    { icon: TrendingUp, label: 'Avg Score', value: `${analytics?.avgScore || 0}%`, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
   ];
 
   const deptData = analytics?.departmentPerformance?.map(d => ({ name: d._id || 'N/A', score: Math.round(d.avgScore), count: d.count })) || [];
