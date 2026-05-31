@@ -33,7 +33,10 @@ exports.protect = async (req, res, next) => {
     next();
   } catch (err) {
     console.error('AUTH MIDDLEWARE ERROR:', err.message);
-    return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+    }
+    return res.status(500).json({ success: false, message: 'Server error validating user session' });
   }
 };
 
