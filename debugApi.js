@@ -3,7 +3,8 @@
 async function test() {
   try {
     // 1. Get an admin token directly using the login endpoint
-    const loginRes = await fetch(`${process.env.API_URL || ''}/api/auth/login`, {
+    const baseURL = process.env.API_URL || 'https://capbackend.onrender.com';
+    const loginRes = await fetch(`${baseURL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'admin@gmail.com', password: 'Admin123' })
@@ -16,7 +17,7 @@ async function test() {
 
     // 2. Fetch assessments
     console.log('Fetching /api/assessments...');
-    const getRes = await fetch(`${process.env.API_URL || ''}/api/assessments`, {
+    const getRes = await fetch(`${baseURL}/api/assessments`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     console.log('GET Status:', getRes.status);
@@ -24,7 +25,7 @@ async function test() {
 
     // 3. Create assessment
     console.log('Creating assessment...');
-    const postRes = await fetch(`${process.env.API_URL || ''}/api/assessments`, {
+    const postRes = await fetch(`${baseURL}/api/assessments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
