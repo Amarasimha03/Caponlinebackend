@@ -3,7 +3,7 @@
 async function test() {
   try {
     // 1. Get an admin token directly using the login endpoint
-    const baseURL = process.env.API_URL || 'https://capbackend.onrender.com';
+    const baseURL = process.env.API_URL || 'https://capbackend-hzho.onrender.com';
     const loginRes = await fetch(`${baseURL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
