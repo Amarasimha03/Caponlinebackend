@@ -27,6 +27,11 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         if (cameraTrack) {
           cameraTrack.onunmute = () => {
             console.log('[AdminMonitoring] Camera track unmuted — replaying');
+            if (video.srcObject) {
+              const stream = video.srcObject;
+              video.srcObject = null;
+              video.srcObject = stream;
+            }
             playVideo();
           };
         }
@@ -43,11 +48,15 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
         video.playsInline = true;
         const playVideo = () => video.play().catch(e => console.warn("Card screen play error:", e));
         video.onloadedmetadata = playVideo;
-        // ✅ onunmute: re-play when first screen RTP data arrives
         const screenTrack = candidate.screenStream.getVideoTracks()[0];
         if (screenTrack) {
           screenTrack.onunmute = () => {
             console.log('[AdminMonitoring] Screen track unmuted — replaying');
+            if (video.srcObject) {
+              const stream = video.srcObject;
+              video.srcObject = null;
+              video.srcObject = stream;
+            }
             playVideo();
           };
         }
@@ -191,11 +200,15 @@ export default function AdminMonitoring() {
             video.playsInline = true;
             const playCamera = () => video.play().catch(e => console.warn("Camera play error:", e));
             video.onloadedmetadata = playCamera;
-            // ✅ Re-play when track unmutes (first RTP packet received)
             const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
             if (cameraTrack) {
               cameraTrack.onunmute = () => {
                 console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
+                if (video.srcObject) {
+                  const stream = video.srcObject;
+                  video.srcObject = null;
+                  video.srcObject = stream;
+                }
                 playCamera();
               };
             }
@@ -210,11 +223,15 @@ export default function AdminMonitoring() {
             video.playsInline = true;
             const playScreen = () => video.play().catch(e => console.warn("Screen play error:", e));
             video.onloadedmetadata = playScreen;
-            // ✅ Re-play when track unmutes (first RTP packet received)
             const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
             if (screenTrack) {
               screenTrack.onunmute = () => {
                 console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
+                if (video.srcObject) {
+                  const stream = video.srcObject;
+                  video.srcObject = null;
+                  video.srcObject = stream;
+                }
                 playScreen();
               };
             }
