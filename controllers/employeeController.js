@@ -179,10 +179,23 @@ exports.uploadEmployeesExcel = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-    const XLSX = require('xlsx');
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+    const sheet = workbook.worksheets[0];
+    const headers = [];
+    const rows = [];
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        row.eachCell((cell) => headers.push(cell.value ? String(cell.value).trim() : ''));
+      } else {
+        const rowObj = {};
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          rowObj[headers[colNumber - 1]] = cell.value !== null && cell.value !== undefined ? String(cell.value).trim() : '';
+        });
+        rows.push(rowObj);
+      }
+    });
 
     if (rows.length === 0) return res.status(400).json({ success: false, message: 'Excel sheet is empty' });
 
