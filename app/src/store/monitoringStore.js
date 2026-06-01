@@ -223,16 +223,21 @@ const useMonitoringStore = create((set, get) => ({
             isCamera = registry.size === 1;
           }
 
-          const applyStream = () => {
+          const applyStream = (forceNew = false) => {
             set((state) => {
               const updated = state.activeExams.map((e) => {
                 if (e.employeeId !== employeeId) return e;
+                
+                // If forced (e.g. on unmute), wrap the track in a new MediaStream
+                // so React detects a referential change and re-renders the component
+                const freshStream = forceNew ? new MediaStream([track]) : stream;
+                
                 if (isCamera) {
-                  console.log(`[MonitoringStore] Setting CAMERA stream for ${employeeId} (stream: ${stream.id})`);
-                  return { ...e, cameraStream: stream, webrtcConnected: true };
+                  console.log(`[MonitoringStore] Setting CAMERA stream for ${employeeId} (stream: ${freshStream.id})`);
+                  return { ...e, cameraStream: freshStream, webrtcConnected: true };
                 } else {
-                  console.log(`[MonitoringStore] Setting SCREEN stream for ${employeeId} (stream: ${stream.id})`);
-                  return { ...e, screenStream: stream, webrtcConnected: true };
+                  console.log(`[MonitoringStore] Setting SCREEN stream for ${employeeId} (stream: ${freshStream.id})`);
+                  return { ...e, screenStream: freshStream, webrtcConnected: true };
                 }
               });
               return { activeExams: updated };
@@ -240,14 +245,14 @@ const useMonitoringStore = create((set, get) => ({
           };
 
           // Apply stream immediately on track arrival
-          applyStream();
+          applyStream(false);
 
           // ✅ Re-trigger on 'unmute': remote tracks begin in muted state until first RTP packet arrives.
           // This fires a state re-render at the exact moment video data starts flowing,
           // fixing black screens even when the connection reports P2P Connected.
           track.addEventListener('unmute', () => {
-            console.log(`[MonitoringStore] Track UNMUTED for ${employeeId} — refreshing stream state`);
-            applyStream();
+            console.log(`[MonitoringStore] Track UNMUTED for ${employeeId} — forcing stream refresh to break React memo`);
+            applyStream(true);
           });
         }
       };
