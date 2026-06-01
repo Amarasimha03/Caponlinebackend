@@ -23,7 +23,7 @@ function attachStream(ref, stream) {
 }
 
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
-const CandidateCard = memo(({ candidate, onMaximize }) => {
+const CandidateCard = memo(({ candidate, onMaximize, isMaximized }) => {
   const cameraRef = useRef(null);
   const screenRef = useRef(null);
 
@@ -279,7 +279,12 @@ export default function AdminMonitoring() {
           {activeExams.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
               {activeExams.map((candidate, i) => (
-                <CandidateCard key={candidate.employeeId || i} candidate={candidate} onMaximize={setSelectedCandidate} />
+                <CandidateCard 
+                  key={candidate.employeeId || i} 
+                  candidate={candidate} 
+                  onMaximize={setSelectedCandidate} 
+                  isMaximized={selectedCandidate?.employeeId === candidate.employeeId}
+                />
               ))}
             </div>
           ) : (
