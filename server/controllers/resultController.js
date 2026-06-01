@@ -184,6 +184,14 @@ exports.getAnalytics = async (req, res) => {
     const empRes = await querySheets('getEmployees');
     const employees = empRes.data || [];
     
+    // Calculate total employees per department (excluding admins)
+    const deptEmployeeCount = {};
+    for (const e of employees) {
+      if ((e.role || '').toLowerCase() === 'admin') continue;
+      const dept = e.department || 'General';
+      deptEmployeeCount[dept] = (deptEmployeeCount[dept] || 0) + 1;
+    }
+    
     const deptMap = {};
     for (const r of allResults) {
       const e = employees.find(e => String(e._id) === String(r.employeeMongoId || r.employeeId || r.employee));
@@ -193,11 +201,18 @@ exports.getAnalytics = async (req, res) => {
       deptMap[dept].sumScore += (parseFloat(r.percentage) || 0);
     }
     
-    const departmentPerformance = Object.keys(deptMap).map(k => ({
-      _id: k,
-      count: deptMap[k].count,
-      avgScore: Math.round(deptMap[k].sumScore / deptMap[k].count)
-    })).sort((a, b) => b.avgScore - a.avgScore);
+    // Combine all departments that have either employees or results
+    const allDepts = new Set([...Object.keys(deptEmployeeCount), ...Object.keys(deptMap)]);
+    
+    const departmentPerformance = Array.from(allDepts).map(dept => {
+      const perf = deptMap[dept];
+      return {
+        _id: dept,
+        count: deptEmployeeCount[dept] || 0, // Actual number of employees
+        examsTaken: perf ? perf.count : 0,
+        avgScore: perf ? Math.round(perf.sumScore / perf.count) : 0
+      };
+    }).sort((a, b) => b.avgScore - a.avgScore);
 
     const vRes = await querySheets('getViolations');
     const totalViolations = (vRes.data || []).length;
