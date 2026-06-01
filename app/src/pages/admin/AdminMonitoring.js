@@ -4,22 +4,23 @@ import { AlertTriangle, User, Camera, Maximize2, X, Activity, ShieldAlert, Monit
 import useMonitoringStore from '../../store/monitoringStore';
 
 // Reliable stream attachment helper that safely handles video playback
-function attachStream(ref, stream) {
+function attachStream(ref, stream, wrap = false) {
   if (!ref.current || !stream) return () => {};
   const video = ref.current;
   
-  // Extract the video track
-  const tracks = stream.getVideoTracks();
-  if (tracks.length === 0) return () => {};
+  let finalStream = stream;
   
-  // Wrap the track in a new MediaStream!
-  // This is CRITICAL for WebRTC remote streams in React.
-  // Moving the exact same MediaStream object between the grid <video> and the modal <video>
-  // causes the browser's hardware decoder to stall and show a black screen.
-  // Wrapping it in a new MediaStream creates a fresh playback pipeline.
-  const wrappedStream = new MediaStream([tracks[0]]);
+  if (wrap) {
+    // Extract the video track and wrap it in a new MediaStream!
+    // This is used for the modal to prevent decoder stalls when reading
+    // the same track that is already playing in the background grid.
+    const tracks = stream.getVideoTracks();
+    if (tracks.length > 0) {
+      finalStream = new MediaStream([tracks[0]]);
+    }
+  }
   
-  video.srcObject = wrappedStream;
+  video.srcObject = finalStream;
   video.muted = true;
   video.playsInline = true;
   
@@ -198,10 +199,10 @@ export default function AdminMonitoring() {
     // Refs may not be attached yet on first render due to AnimatePresence — defer
     const timer = setTimeout(() => {
       if (currentCandidate?.cameraStream) {
-        detachCamera = attachStream(selectedCameraRef, currentCandidate.cameraStream);
+        detachCamera = attachStream(selectedCameraRef, currentCandidate.cameraStream, true);
       }
       if (currentCandidate?.screenStream) {
-        detachScreen = attachStream(selectedScreenRef, currentCandidate.screenStream);
+        detachScreen = attachStream(selectedScreenRef, currentCandidate.screenStream, true);
       }
     }, 50);
 
