@@ -60,7 +60,7 @@ function App() {
     // Early non-blocking background fetch to wake up Render free tier container quickly
     const wakeUpBackend = async () => {
       try {
-        const fallbackUrl = "/api/health";
+        const fallbackUrl = "https://caponlinebackend.onrender.com/api/health";
         const targetUrl = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL.replace(/\/$/, '')}/health` : fallbackUrl;
         
         const start = Date.now();
