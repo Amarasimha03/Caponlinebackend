@@ -161,6 +161,7 @@ export default function ExamPage() {
       socketRef.current?.emit('submit-exam', {
         examId: assessmentId,
         userId: user?._id,
+        employeeId: user?._id,
         answers: formattedAnswers
       });
 

@@ -317,7 +317,7 @@ const useMonitoringStore = create((set, get) => ({
       delete peerStreamRegistry[data.employeeId];
       delete peerStreamIdMap[data.employeeId];
       set((state) => ({
-        activeExams: state.activeExams.filter((e) => e.employeeId !== data.employeeId),
+        activeExams: state.activeExams.filter((e) => String(e.employeeId) !== String(data.employeeId)),
       }));
     });
 
