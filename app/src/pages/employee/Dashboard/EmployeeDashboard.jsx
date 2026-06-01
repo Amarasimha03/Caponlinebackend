@@ -159,7 +159,7 @@ export default function EmployeeDashboard() {
             />
           </div>
 
-
+          {/* Notifications removed as requested */}
 
           <div style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
 
