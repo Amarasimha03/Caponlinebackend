@@ -413,21 +413,9 @@ async function startServer() {
     }
   }));
 
-  // SPA fallback: redirect all unhandled requests to React index.html so refreshing routes (e.g. /dashboard) doesn't throw 404
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
-      return next();
-    }
-    // Exclude missing static assets from HTML redirection to avoid MIME type errors
-    if (/\.(js|css|png|jpg|jpeg|gif|ico|json|svg|woff|woff2|ttf|map)$/i.test(req.path)) {
-      return res.status(404).send('Not Found');
-    }
-    res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
-      if (err) {
-        console.error('SPA Fallback Error:', err);
-        res.status(500).send('Frontend static files or index.html missing at ' + path.join(clientBuildPath, 'index.html') + ': ' + err.message);
-      }
-    });
+  // 404 Fallback for unhandled routes
+  app.get('*', (req, res) => {
+    res.status(404).json({ success: false, message: 'API route not found' });
   });
 
   const http = require('http');
