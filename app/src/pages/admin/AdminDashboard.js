@@ -226,7 +226,23 @@ export default function AdminDashboard() {
             {totalPie > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} dataKey="value" stroke="rgba(0,0,0,0.2)" strokeWidth={2}>
+                  <Pie 
+                    data={pieData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} 
+                    dataKey="value" stroke="rgba(0,0,0,0.2)" strokeWidth={2}
+                    labelLine={false}
+                    label={({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
+                      if (value === 0) return null;
+                      const RADIAN = Math.PI / 180;
+                      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      return (
+                        <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="16" fontWeight="bold">
+                          {value}
+                        </text>
+                      );
+                    }}
+                  >
                     {pieData.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : '#ef4444'} />)}
                   </Pie>
                   <Tooltip contentStyle={{ background: 'rgba(15, 17, 23, 0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#f8fafc' }} />
