@@ -85,6 +85,7 @@ exports.createEmployee = async (req, res) => {
       await querySheets('updateAssessment', { _id: a._id, assignedTo: assTo });
     }
 
+    if (global.io) global.io.emit('db:sync');
     res.status(201).json({ success: true, employee: empData });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
@@ -100,6 +101,7 @@ exports.updateEmployee = async (req, res) => {
     const updateData = { _id: req.params.id, fullName, phone, department, designation, company, isActive, role, updatedAt: new Date().toISOString() };
     await querySheets('updateEmployee', updateData);
     
+    if (global.io) global.io.emit('db:sync');
     res.json({ success: true, employee: { ...employee, ...updateData } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
@@ -108,6 +110,7 @@ exports.deleteEmployee = async (req, res) => {
   const id = req.params.id;
   try {
     await querySheets('deleteEntity', { sheetName: 'employees', _id: id });
+    if (global.io) global.io.emit('db:sync');
     res.json({ success: true, message: 'Employee deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -141,6 +144,7 @@ exports.assignAssessment = async (req, res) => {
       }
     }
     
+    if (global.io) global.io.emit('db:sync');
     res.json({ success: true, message: 'Assessment assigned successfully', employee });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
