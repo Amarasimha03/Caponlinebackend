@@ -4,7 +4,7 @@ import { AlertTriangle, User, Camera, Maximize2, X, Activity, ShieldAlert, Monit
 import useMonitoringStore from '../../store/monitoringStore';
 
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
-const CandidateCard = memo(({ candidate, onMaximize }) => {
+const CandidateCard = memo(({ candidate, isMaximized, onMaximize }) => {
   const cameraRef = useRef(null);
   const screenRef = useRef(null);
 
@@ -21,30 +21,33 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
       const video = cameraRef.current;
       const playVideo = () => video.play().catch(e => console.warn("Card camera play error:", e));
       
-      const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
-      if (cameraTrack) {
-        const currentTrack = video.srcObject?.getVideoTracks()[0];
-        if (currentTrack !== cameraTrack) {
-          video.srcObject = new MediaStream([cameraTrack]);
+      if (isMaximized) {
+        if (video.srcObject) video.srcObject = null;
+      } else {
+        if (video.srcObject !== candidate.cameraStream) {
+          video.srcObject = candidate.cameraStream;
           video.muted = true;
           video.playsInline = true;
           video.onloadedmetadata = playVideo;
           playVideo();
         }
         
-        const onUnmute = () => {
-          console.log('[AdminMonitoring] Camera track unmuted — replaying');
-          if (video.srcObject) {
-            const stream = video.srcObject;
-            video.srcObject = null;
-            video.srcObject = stream;
+        const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
+        if (cameraTrack) {
+          const onUnmute = () => {
+            console.log('[AdminMonitoring] Camera track unmuted — replaying');
+            if (video.srcObject) {
+              const stream = video.srcObject;
+              video.srcObject = null;
+              video.srcObject = stream;
+            }
+            playVideo();
+          };
+          cameraTrack.addEventListener('unmute', onUnmute);
+          cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
+          if (!cameraTrack.muted && video.paused) {
+            playVideo();
           }
-          playVideo();
-        };
-        cameraTrack.addEventListener('unmute', onUnmute);
-        cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
-        if (!cameraTrack.muted && video.paused) {
-          playVideo();
         }
       }
     } else if (cameraRef.current && !candidate.cameraStream) {
@@ -55,30 +58,33 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
       const video = screenRef.current;
       const playVideo = () => video.play().catch(e => console.warn("Card screen play error:", e));
       
-      const screenTrack = candidate.screenStream.getVideoTracks()[0];
-      if (screenTrack) {
-        const currentTrack = video.srcObject?.getVideoTracks()[0];
-        if (currentTrack !== screenTrack) {
-          video.srcObject = new MediaStream([screenTrack]);
+      if (isMaximized) {
+        if (video.srcObject) video.srcObject = null;
+      } else {
+        if (video.srcObject !== candidate.screenStream) {
+          video.srcObject = candidate.screenStream;
           video.muted = true;
           video.playsInline = true;
           video.onloadedmetadata = playVideo;
           playVideo();
         }
         
-        const onUnmute = () => {
-          console.log('[AdminMonitoring] Screen track unmuted — replaying');
-          if (video.srcObject) {
-            const stream = video.srcObject;
-            video.srcObject = null;
-            video.srcObject = stream;
+        const screenTrack = candidate.screenStream.getVideoTracks()[0];
+        if (screenTrack) {
+          const onUnmute = () => {
+            console.log('[AdminMonitoring] Screen track unmuted — replaying');
+            if (video.srcObject) {
+              const stream = video.srcObject;
+              video.srcObject = null;
+              video.srcObject = stream;
+            }
+            playVideo();
+          };
+          screenTrack.addEventListener('unmute', onUnmute);
+          cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
+          if (!screenTrack.muted && video.paused) {
+            playVideo();
           }
-          playVideo();
-        };
-        screenTrack.addEventListener('unmute', onUnmute);
-        cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
-        if (!screenTrack.muted && video.paused) {
-          playVideo();
         }
       }
     } else if (screenRef.current && !candidate.screenStream) {
@@ -90,7 +96,7 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
       cleanupScreen();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candidate.cameraStream, candidate.screenStream, candidate.employeeId]);
+  }, [candidate.cameraStream, candidate.screenStream, candidate.employeeId, isMaximized]);
 
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
@@ -228,17 +234,16 @@ export default function AdminMonitoring() {
           const video = selectedCameraRef.current;
           const playCamera = () => video.play().catch(e => console.warn("Camera play error:", e));
           
+          if (video.srcObject !== currentCandidate.cameraStream) {
+            video.srcObject = currentCandidate.cameraStream;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadedmetadata = playCamera;
+            playCamera();
+          }
+          
           const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
           if (cameraTrack) {
-            const currentTrack = video.srcObject?.getVideoTracks()[0];
-            if (currentTrack !== cameraTrack) {
-              video.srcObject = new MediaStream([cameraTrack]);
-              video.muted = true;
-              video.playsInline = true;
-              video.onloadedmetadata = playCamera;
-              playCamera();
-            }
-            
             const onUnmute = () => {
               console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
               if (video.srcObject) {
@@ -259,17 +264,16 @@ export default function AdminMonitoring() {
           const video = selectedScreenRef.current;
           const playScreen = () => video.play().catch(e => console.warn("Screen play error:", e));
           
+          if (video.srcObject !== currentCandidate.screenStream) {
+            video.srcObject = currentCandidate.screenStream;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadedmetadata = playScreen;
+            playScreen();
+          }
+          
           const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
           if (screenTrack) {
-            const currentTrack = video.srcObject?.getVideoTracks()[0];
-            if (currentTrack !== screenTrack) {
-              video.srcObject = new MediaStream([screenTrack]);
-              video.muted = true;
-              video.playsInline = true;
-              video.onloadedmetadata = playScreen;
-              playScreen();
-            }
-
             const onUnmute = () => {
               console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
               if (video.srcObject) {
@@ -373,7 +377,12 @@ export default function AdminMonitoring() {
           {activeExams.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
               {activeExams.map((candidate, i) => (
-                <CandidateCard key={candidate.employeeId || i} candidate={candidate} onMaximize={setSelectedCandidate} />
+                <CandidateCard 
+                  key={candidate.employeeId || i} 
+                  candidate={candidate} 
+                  isMaximized={selectedCandidate?.employeeId === candidate.employeeId}
+                  onMaximize={setSelectedCandidate} 
+                />
               ))}
             </div>
           ) : (
