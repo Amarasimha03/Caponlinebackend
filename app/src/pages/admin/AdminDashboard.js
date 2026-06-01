@@ -202,7 +202,7 @@ export default function AdminDashboard() {
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} dy={10} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'rgba(15, 17, 23, 0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#f8fafc', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} />
-                  <Bar dataKey="score" fill="url(#barGradient)" radius={[8, 8, 0, 0]} label={<CustomBarLabel data={deptData} />} />
+                  <Bar dataKey="count" name="Users" fill="url(#barGradient)" radius={[8, 8, 0, 0]} label={<CustomBarLabel data={deptData} />} />
                   <defs>
                     <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#c084fc" />
