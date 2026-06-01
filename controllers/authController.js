@@ -19,19 +19,33 @@ exports.register = async (req, res) => {
 
     if (exists) return res.status(400).json({ success: false, message: 'Email already registered' });
 
+    // Fetch active assessments to auto-assign to the new employee
+    const assRes = await querySheets('getAssessments');
+    const activeAssessments = (assRes.data || []).filter(a => ['active', 'scheduled'].includes(a.status));
+    const assessmentIds = activeAssessments.map(a => String(a._id));
+
     const newEmp = {
       _id: Date.now().toString(),
       fullName, email, phone, password, department,
       isVerified: true,
       isActive: true,
       role: 'employee',
-      assignedAssessments: [],
+      assignedAssessments: assessmentIds,
       examStats: { totalAttempts: 0, totalPassed: 0, totalFailed: 0, avgScore: 0, totalTimeTaken: 0 },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
     await querySheets('createEmployee', newEmp);
+    
+    // Also update assessments to include this new employee to ensure bi-directional assignment
+    for (const a of activeAssessments) {
+      let assTo = [];
+      try { assTo = typeof a.assignedTo === 'string' ? JSON.parse(a.assignedTo) : (a.assignedTo || []); } catch(e){}
+      assTo.push(newEmp._id);
+      await querySheets('updateAssessment', { _id: a._id, assignedTo: assTo });
+    }
+
     const token = generateToken(newEmp._id);
 
     res.status(201).json({ success: true, token, user: newEmp });
