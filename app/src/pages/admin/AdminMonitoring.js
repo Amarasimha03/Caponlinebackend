@@ -4,26 +4,25 @@ import { AlertTriangle, User, Camera, Maximize2, X, Activity, ShieldAlert, Monit
 import useMonitoringStore from '../../store/monitoringStore';
 
 // Reliable stream attachment helper that safely handles video playback
-function attachStream(ref, stream, wrap = false) {
-  if (!ref.current || !stream) return () => {};
+function attachStream(ref, stream) {
+  if (!ref.current || !stream) return () => { };
   const video = ref.current;
-  
-  let finalStream = stream;
-  
-  if (wrap) {
-    // Extract the video track and wrap it in a new MediaStream!
-    // This is used for the modal to prevent decoder stalls when reading
-    // the same track that is already playing in the background grid.
-    const tracks = stream.getVideoTracks();
-    if (tracks.length > 0) {
-      finalStream = new MediaStream([tracks[0]]);
-    }
-  }
-  
-  video.srcObject = finalStream;
+
+  // Extract the video track
+  const tracks = stream.getVideoTracks();
+  if (tracks.length === 0) return () => { };
+
+  // Wrap the track in a new MediaStream!
+  // This is CRITICAL for WebRTC remote streams in React.
+  // Moving the exact same MediaStream object between the grid <video> and the modal <video>
+  // causes the browser's hardware decoder to stall and show a black screen.
+  // Wrapping it in a new MediaStream creates a fresh playback pipeline.
+  const wrappedStream = new MediaStream([tracks[0]]);
+
+  video.srcObject = wrappedStream;
   video.muted = true;
   video.playsInline = true;
-  
+
   const playPromise = video.play();
   if (playPromise !== undefined) {
     playPromise.catch(e => {
@@ -33,7 +32,7 @@ function attachStream(ref, stream, wrap = false) {
       }
     });
   }
-  
+
   return () => {
     if (video) video.srcObject = null;
   };
@@ -49,8 +48,8 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
   const hasAnyStream = hasCamera || hasScreen;
 
   useEffect(() => {
-    let detachCamera = () => {};
-    let detachScreen = () => {};
+    let detachCamera = () => { };
+    let detachScreen = () => { };
 
     if (candidate.cameraStream) {
       detachCamera = attachStream(cameraRef, candidate.cameraStream);
@@ -186,23 +185,23 @@ export default function AdminMonitoring() {
   // Update selected candidate streams in the modal when it opens
   useEffect(() => {
     const currentCandidate = selectedCandidate ? activeExams.find(e => e.employeeId === selectedCandidate.employeeId) : null;
-    
+
     if (selectedCandidate && !currentCandidate) {
       // Candidate submitted exam or disconnected — auto-close the modal
       setSelectedCandidate(null);
       return;
     }
 
-    let detachCamera = () => {};
-    let detachScreen = () => {};
+    let detachCamera = () => { };
+    let detachScreen = () => { };
 
     // Refs may not be attached yet on first render due to AnimatePresence — defer
     const timer = setTimeout(() => {
       if (currentCandidate?.cameraStream) {
-        detachCamera = attachStream(selectedCameraRef, currentCandidate.cameraStream, true);
+        detachCamera = attachStream(selectedCameraRef, currentCandidate.cameraStream);
       }
       if (currentCandidate?.screenStream) {
-        detachScreen = attachStream(selectedScreenRef, currentCandidate.screenStream, true);
+        detachScreen = attachStream(selectedScreenRef, currentCandidate.screenStream);
       }
     }, 50);
 
@@ -291,10 +290,10 @@ export default function AdminMonitoring() {
           {activeExams.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
               {activeExams.map((candidate, i) => (
-                <CandidateCard 
-                  key={candidate.employeeId || i} 
-                  candidate={candidate} 
-                  onMaximize={setSelectedCandidate} 
+                <CandidateCard
+                  key={candidate.employeeId || i}
+                  candidate={candidate}
+                  onMaximize={setSelectedCandidate}
                 />
               ))}
             </div>
