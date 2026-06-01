@@ -25,6 +25,11 @@ export function useFaceDetection({ phase, videoRef, webcamReady, logViolation })
   useEffect(() => {
     if (phase !== 'exam') return;
 
+    // Reset timers when entering the exam phase to avoid penalizing the time spent in the setup screen
+    lastFaceDetectedTimeRef.current = Date.now();
+    lastCameraWarningRef.current = Date.now();
+    multiPersonActiveSinceRef.current = null;
+
     simulationIntervalRef.current = setInterval(async () => {
       if (faceModelRef.current && videoRef.current && webcamReady) {
         try {
