@@ -426,14 +426,14 @@ async function startServer() {
 
   // Initialize Socket.IO
   const io = new Server(server, {
-    transports: ["websocket", "polling"],
     cors: {
       origin: function (origin, callback) {
         callback(null, true);
       },
       methods: ["GET", "POST"],
       credentials: true
-    }
+    },
+    transports: ['websocket']
   });
 
   // Attach io globally and to express app so controllers can use it
