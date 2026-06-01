@@ -229,7 +229,7 @@ export default function ExamPage() {
   });
 
   const { logViolation } = useViolations({
-    phase, user, assessmentId, resultId, violations, setViolations, maxViolations, socketRef, onTerminate: terminateExam
+    phase: submitting ? 'submitted' : phase, user, assessmentId, resultId, violations, setViolations, maxViolations, socketRef, onTerminate: terminateExam
   });
 
   useFaceDetection({

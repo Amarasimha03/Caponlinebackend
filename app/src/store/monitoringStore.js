@@ -316,9 +316,25 @@ const useMonitoringStore = create((set, get) => ({
       }
       delete peerStreamRegistry[data.employeeId];
       delete peerStreamIdMap[data.employeeId];
-      set((state) => ({
-        activeExams: state.activeExams.filter((e) => String(e.employeeId) !== String(data.employeeId)),
-      }));
+      
+      set((state) => {
+        const emp = state.activeExams.find(e => String(e.employeeId) === String(data.employeeId));
+        const empName = emp ? emp.employeeName : 'Employee';
+        const reason = data.terminationReason || 'Submitted successfully';
+        
+        const completionAlert = {
+          employeeId: data.employeeId,
+          employeeName: empName,
+          type: 'COMPLETED',
+          description: `Exam Completed: ${reason}`,
+          timestamp: new Date()
+        };
+
+        return {
+          violations: [completionAlert, ...state.violations].slice(0, 50),
+          activeExams: state.activeExams.filter((e) => String(e.employeeId) !== String(data.employeeId)),
+        };
+      });
     });
 
     socket.on('exam:employee-disconnected', (data) => {
