@@ -229,7 +229,7 @@ export default function AdminDashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie 
-                        data={pieData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} 
+                        data={pieData} cx="50%" cy="50%" innerRadius={65} outerRadius={90} 
                         dataKey="value" stroke="rgba(0,0,0,0.2)" strokeWidth={2}
                       >
                         {pieData.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : '#ef4444'} />)}
