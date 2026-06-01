@@ -17,6 +17,7 @@ process.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
 process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL || GOOGLE_SHEET_URL_DEFAULT;
+process.env.CLIENT_URL = process.env.CLIENT_URL || 'https://caponlinetest.onrender.com';
 
 const express = require('express');
 const cors = require('cors');
