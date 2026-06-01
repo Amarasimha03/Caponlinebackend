@@ -528,8 +528,25 @@ async function startServer() {
 
     // Employee violation specification
     socket.on('violation', (data) => {
-      const { examId } = data;
+      const { examId, userId, employeeName, type, description } = data;
       io.to(examId).emit('violation', data);
+      
+      // Only emit to admin-room if it has full description (the new violation:detected payload has this)
+      if (employeeName && description) {
+        io.to('admin-room').emit('violation:alert', data);
+      } else if (data.type) {
+        // Fallback for spec payload
+        const empName = activeSockets.get(String(userId))?.employeeName || 'Unknown Employee';
+        io.to('admin-room').emit('violation:alert', {
+          employeeId: userId,
+          employeeName: empName,
+          type: data.type,
+          description: `Violation detected: ${data.type}`
+        });
+      }
+    });
+
+    socket.on('violation:detected', (data) => {
       io.to('admin-room').emit('violation:alert', data);
     });
 
