@@ -57,7 +57,9 @@ app.use(compression());
 
 // ── CORS: Standardized robust CORS middleware configuration ──
 const ALLOWED_ORIGINS = [
-  process.env.CLIENT_URL
+  process.env.CLIENT_URL || 'https://caponlinetest.onrender.com',
+  'http://localhost:3000',
+  'http://localhost:3001'
 ].filter(Boolean);
 
 app.use(cors({
