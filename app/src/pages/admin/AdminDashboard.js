@@ -224,34 +224,53 @@ export default function AdminDashboard() {
           </h3>
           <div style={{ height: '320px', width: '100%', position: 'relative' }}>
             {totalPie > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie 
-                    data={pieData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} 
-                    dataKey="value" stroke="rgba(0,0,0,0.2)" strokeWidth={2}
-                    labelLine={false}
-                    label={({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
-                      if (value === 0) return null;
-                      const RADIAN = Math.PI / 180;
-                      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                      return (
-                        <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="16" fontWeight="bold">
-                          {value}
-                        </text>
-                      );
-                    }}
-                  >
-                    {pieData.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : '#ef4444'} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: 'rgba(15, 17, 23, 0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#f8fafc' }} />
-                  <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-                    <tspan x="50%" dy="-5" fontSize="36" fontWeight="800" fill="#f8fafc">{totalPie}</tspan>
-                    <tspan x="50%" dy="26" fontSize="14" fontWeight="600" fill="#94a3b8" letterSpacing="1px" textTransform="uppercase">Total</tspan>
-                  </text>
-                </PieChart>
-              </ResponsiveContainer>
+              <>
+                <div style={{ position: 'absolute', inset: 0, paddingBottom: '30px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie 
+                        data={pieData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} 
+                        dataKey="value" stroke="rgba(0,0,0,0.2)" strokeWidth={2}
+                      >
+                        {pieData.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : '#ef4444'} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: 'rgba(15, 17, 23, 0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#f8fafc' }} />
+                      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
+                        <tspan x="50%" dy="-5" fontSize="36" fontWeight="800" fill="#f8fafc">{totalPie}</tspan>
+                        <tspan x="50%" dy="26" fontSize="14" fontWeight="600" fill="#94a3b8" letterSpacing="1px" textTransform="uppercase">Total</tspan>
+                      </text>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Left side — Passed count */}
+                <div style={{ position: 'absolute', left: '8%', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ fontSize: '28px', fontWeight: '800', color: '#10b981' }}>{pieData[0].value}</span>
+                  <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: '500' }}>Passed</span>
+                </div>
+
+                {/* Right side — Failed count */}
+                <div style={{ position: 'absolute', right: '8%', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ fontSize: '28px', fontWeight: '800', color: '#ef4444' }}>{pieData[1].value}</span>
+                  <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: '500' }}>Failed</span>
+                </div>
+
+                {/* Bottom legend with percentages */}
+                <div style={{ position: 'absolute', bottom: '0', left: 0, width: '100%', display: 'flex', justifyContent: 'center', gap: '24px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }} />
+                    <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: '500' }}>
+                      Passed <span style={{ color: '#10b981', fontWeight: '700' }}>{Math.round((pieData[0].value/totalPie)*100)}%</span>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }} />
+                    <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: '500' }}>
+                      Failed <span style={{ color: '#ef4444', fontWeight: '700' }}>{Math.round((pieData[1].value/totalPie)*100)}%</span>
+                    </span>
+                  </div>
+                </div>
+              </>
             ) : (
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>No results yet</div>
             )}
