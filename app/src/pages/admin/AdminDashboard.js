@@ -194,7 +194,7 @@ export default function AdminDashboard() {
             <BarChart3 size={20} style={{ marginRight: '10px', color: '#818cf8' }} />
             Department Performance
           </h3>
-          <div style={{ height: '320px', width: '100%' }}>
+          <div style={{ height: '320px', width: '100%', minWidth: 0 }}>
             {deptData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={deptData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
             <Award size={20} style={{ marginRight: '10px', color: '#10b981' }} />
             Pass/Fail Ratio
           </h3>
-          <div style={{ height: '320px', width: '100%', position: 'relative' }}>
+          <div style={{ height: '320px', width: '100%', position: 'relative', minWidth: 0 }}>
             {totalPie > 0 ? (
               <>
                 <div style={{ position: 'absolute', inset: 0, paddingBottom: '30px' }}>
