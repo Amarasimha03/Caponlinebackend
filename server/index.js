@@ -90,7 +90,7 @@ app.use((req, res, next) => {
     'Access-Control-Allow-Headers',
     'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control'
   );
-  
+
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
