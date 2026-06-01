@@ -40,6 +40,7 @@ export default function ExamPage() {
 
   const socketRef = useRef(null);
   const webrtcManagerRef = useRef(null);
+  const submittingRef = useRef(false);
   const maxViolations = 3;
   const LS_EXAM_KEY = `examState_${assessmentId}`;
 
@@ -138,7 +139,8 @@ export default function ExamPage() {
   }, [assessmentId, navigate, LS_EXAM_KEY]);
 
   const terminateExam = useCallback(async (reason = "Terminated") => {
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
 
     try {
@@ -215,6 +217,7 @@ export default function ExamPage() {
       });
       navigate("/employee/dashboard", { replace: true });
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
