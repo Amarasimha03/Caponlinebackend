@@ -225,7 +225,7 @@ export default function AdminDashboard() {
           <div style={{ height: '320px', width: '100%', position: 'relative', minWidth: 0 }}>
             {totalPie > 0 ? (
               <>
-                <div style={{ position: 'absolute', inset: 0, paddingBottom: '30px' }}>
+                <div style={{ position: 'absolute', inset: 0, paddingBottom: '30px', marginLeft: '60px', marginRight: '60px' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie 
