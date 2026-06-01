@@ -23,7 +23,7 @@ const cors = require('cors');
 // localCache removed
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const clientBuildPath = path.join(__dirname, '../dist');
+const clientBuildPath = path.join(__dirname, '../build');
 
 
 // ── Startup diagnostics ─────────────────────────────────────
