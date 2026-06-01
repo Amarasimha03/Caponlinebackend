@@ -378,6 +378,12 @@ async function startServer() {
           terminationReason: reason || 'Camera Violations',
           status: result.status,
         });
+        
+        const activeSockets = req.app.get('activeSockets');
+        if (activeSockets) {
+          activeSockets.delete(empId.toString());
+        }
+
         console.log('📡 Broadcasting global db:sync signal on exam submission');
         io.emit('db:sync');
       }
@@ -516,9 +522,13 @@ async function startServer() {
 
     // Employee exam submit specification
     socket.on('submit-exam', (data) => {
-      const { examId } = data;
+      const { examId, employeeId, userId } = data;
+      const targetId = employeeId || userId;
       io.to(examId).emit('exam-submitted', data);
       io.to('admin-room').emit('exam:completed', data);
+      if (targetId) {
+        activeSockets.delete(String(targetId));
+      }
     });
 
     // Maintain backwards compatibility for existing hooks
@@ -573,6 +583,9 @@ async function startServer() {
 
     socket.on('exam:submit', (data) => {
       io.to('admin-room').emit('exam:completed', data);
+      if (data.employeeId) {
+        activeSockets.delete(String(data.employeeId));
+      }
     });
 
     socket.on('candidate-frame', (data) => {

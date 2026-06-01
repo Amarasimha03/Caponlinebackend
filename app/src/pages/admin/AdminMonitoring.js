@@ -19,28 +19,30 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
 
     if (cameraRef.current && candidate.cameraStream) {
       const video = cameraRef.current;
+      const playVideo = () => video.play().catch(e => console.warn("Card camera play error:", e));
       if (video.srcObject !== candidate.cameraStream) {
         video.srcObject = candidate.cameraStream;
         video.muted = true;
         video.playsInline = true;
-        const playVideo = () => video.play().catch(e => console.warn("Card camera play error:", e));
         video.onloadedmetadata = playVideo;
-        // ✅ onunmute: remote tracks start muted — re-play when first RTP data arrives
-        const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
-        if (cameraTrack) {
-          const onUnmute = () => {
-            console.log('[AdminMonitoring] Camera track unmuted — replaying');
-            if (video.srcObject) {
-              const stream = video.srcObject;
-              video.srcObject = null;
-              video.srcObject = stream;
-            }
-            playVideo();
-          };
-          cameraTrack.addEventListener('unmute', onUnmute);
-          cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
-        }
         playVideo();
+      }
+      const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
+      if (cameraTrack) {
+        const onUnmute = () => {
+          console.log('[AdminMonitoring] Camera track unmuted — replaying');
+          if (video.srcObject) {
+            const stream = video.srcObject;
+            video.srcObject = null;
+            video.srcObject = stream;
+          }
+          playVideo();
+        };
+        cameraTrack.addEventListener('unmute', onUnmute);
+        cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
+        if (!cameraTrack.muted && video.paused) {
+          playVideo();
+        }
       }
     } else if (cameraRef.current && !candidate.cameraStream) {
       cameraRef.current.srcObject = null;
@@ -48,27 +50,30 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
 
     if (screenRef.current && candidate.screenStream) {
       const video = screenRef.current;
+      const playVideo = () => video.play().catch(e => console.warn("Card screen play error:", e));
       if (video.srcObject !== candidate.screenStream) {
         video.srcObject = candidate.screenStream;
         video.muted = true;
         video.playsInline = true;
-        const playVideo = () => video.play().catch(e => console.warn("Card screen play error:", e));
         video.onloadedmetadata = playVideo;
-        const screenTrack = candidate.screenStream.getVideoTracks()[0];
-        if (screenTrack) {
-          const onUnmute = () => {
-            console.log('[AdminMonitoring] Screen track unmuted — replaying');
-            if (video.srcObject) {
-              const stream = video.srcObject;
-              video.srcObject = null;
-              video.srcObject = stream;
-            }
-            playVideo();
-          };
-          screenTrack.addEventListener('unmute', onUnmute);
-          cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
-        }
         playVideo();
+      }
+      const screenTrack = candidate.screenStream.getVideoTracks()[0];
+      if (screenTrack) {
+        const onUnmute = () => {
+          console.log('[AdminMonitoring] Screen track unmuted — replaying');
+          if (video.srcObject) {
+            const stream = video.srcObject;
+            video.srcObject = null;
+            video.srcObject = stream;
+          }
+          playVideo();
+        };
+        screenTrack.addEventListener('unmute', onUnmute);
+        cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
+        if (!screenTrack.muted && video.paused) {
+          playVideo();
+        }
       }
     } else if (screenRef.current && !candidate.screenStream) {
       screenRef.current.srcObject = null;
@@ -207,55 +212,66 @@ export default function AdminMonitoring() {
     if (selectedCandidate) {
       // Find the latest state of the selected candidate
       const currentCandidate = activeExams.find(e => e.employeeId === selectedCandidate.employeeId);
+      if (!currentCandidate) {
+        // Candidate submitted exam or disconnected — auto-close the modal
+        setSelectedCandidate(null);
+        return;
+      }
       if (currentCandidate) {
         if (selectedCameraRef.current && currentCandidate.cameraStream) {
           const video = selectedCameraRef.current;
+          const playCamera = () => video.play().catch(e => console.warn("Camera play error:", e));
           if (video.srcObject !== currentCandidate.cameraStream) {
             video.srcObject = currentCandidate.cameraStream;
             video.muted = true;
             video.playsInline = true;
-            const playCamera = () => video.play().catch(e => console.warn("Camera play error:", e));
             video.onloadedmetadata = playCamera;
-            const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
-            if (cameraTrack) {
-              const onUnmute = () => {
-                console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
-                if (video.srcObject) {
-                  const stream = video.srcObject;
-                  video.srcObject = null;
-                  video.srcObject = stream;
-                }
-                playCamera();
-              };
-              cameraTrack.addEventListener('unmute', onUnmute);
-              cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
-            }
             playCamera();
+          }
+          const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
+          if (cameraTrack) {
+            const onUnmute = () => {
+              console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
+              if (video.srcObject) {
+                const stream = video.srcObject;
+                video.srcObject = null;
+                video.srcObject = stream;
+              }
+              playCamera();
+            };
+            cameraTrack.addEventListener('unmute', onUnmute);
+            cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
+            if (!cameraTrack.muted && video.paused) {
+              playCamera();
+            }
           }
         }
         if (selectedScreenRef.current && currentCandidate.screenStream) {
           const video = selectedScreenRef.current;
+          const playScreen = () => video.play().catch(e => console.warn("Screen play error:", e));
           if (video.srcObject !== currentCandidate.screenStream) {
             video.srcObject = currentCandidate.screenStream;
             video.muted = true;
             video.playsInline = true;
-            const playScreen = () => video.play().catch(e => console.warn("Screen play error:", e));
             video.onloadedmetadata = playScreen;
-            const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
-            if (screenTrack) {
-              const onUnmute = () => {
-                console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
-                if (video.srcObject) {
-                  const stream = video.srcObject;
-                  video.srcObject = null;
-                  video.srcObject = stream;
-                }
-                playScreen();
-              };
-              screenTrack.addEventListener('unmute', onUnmute);
-              cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
-            }
             playScreen();
+          }
+          const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
+          if (screenTrack) {
+            const onUnmute = () => {
+              console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
+              if (video.srcObject) {
+                const stream = video.srcObject;
+                video.srcObject = null;
+                video.srcObject = stream;
+              }
+              playScreen();
+            };
+            screenTrack.addEventListener('unmute', onUnmute);
+            cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
+            if (!screenTrack.muted && video.paused) {
+              playScreen();
+            }
           }
         }
       }
