@@ -56,12 +56,6 @@ export default function ExamPage() {
         userId: user._id,
         employeeName: user.fullName
       });
-
-      socketRef.current?.emit('exam:start', {
-        employeeId: user._id,
-        employeeName: user.fullName,
-        examId: assessmentId,
-      });
       if (streamRef.current || screenStreamRef.current) {
         webrtcManagerRef.current?.setupWebRTC(streamRef.current, screenStreamRef.current);
       }
