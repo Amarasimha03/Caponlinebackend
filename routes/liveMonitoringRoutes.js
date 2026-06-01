@@ -32,7 +32,7 @@ router.get('/', protect, async (req, res) => {
         employeeName: e?.fullName || r.employeeName || 'Candidate',
         assessmentId: a?._id || r.assessmentId || r.assessment || '',
         assessmentTitle: a?.title || 'Exam',
-        violationCount: r.violationCount || 0,
+        violationCount: parseInt(r.violationCount) || 0,
         startedAt: r.startedAt,
         cameraActive: sm.webcamEnabled === true || sm.webcamEnabled === 'true',
         screenShareStatus: (sm.webcamEnabled === true || sm.webcamEnabled === 'true') ? 'active' : 'stopped',
