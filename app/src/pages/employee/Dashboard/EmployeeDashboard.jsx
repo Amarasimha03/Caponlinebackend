@@ -159,61 +159,7 @@ export default function EmployeeDashboard() {
             />
           </div>
 
-          {/* Notifications */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => {
-                setShowNotif(!showNotif);
-                setHasUnread(false);
-              }}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', position: 'relative', padding: 8, borderRadius: '50%', transition: 'background 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <Bell size={20} />
-              {hasUnread && (
-                <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, background: '#ef4444', borderRadius: '50%', boxShadow: '0 0 10px rgba(239,68,68,0.5)' }} />
-              )}
-            </button>
 
-            <AnimatePresence>
-              {showNotif && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  style={{
-                    position: 'absolute', top: 50, right: 0, width: 320, background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-                    borderRadius: 16, boxShadow: '0 10px 40px rgba(0,0,0,0.3)', overflow: 'hidden', zIndex: 100
-                  }}
-                >
-                  <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Notifications</span>
-                    <button onClick={() => setShowNotif(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={16} /></button>
-                  </div>
-                  <div style={{ maxHeight: 300, overflowY: 'auto', padding: 8 }}>
-                    {notifications.length === 0 ? (
-                      <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No new notifications</div>
-                    ) : (
-                      notifications.map((n, i) => (
-                        <div 
-                          key={i} 
-                          onClick={() => { navigate(`/exam/${n.id}`); setShowNotif(false); }}
-                          style={{ padding: '12px 16px', borderRadius: 8, transition: 'background 0.2s', cursor: 'pointer' }} 
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} 
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 4, fontWeight: 500 }}>{n.message}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{n.time}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
           <div style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
 
