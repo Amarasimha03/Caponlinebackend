@@ -172,7 +172,14 @@ const useMonitoringStore = create((set, get) => ({
       peerStreamRegistry[employeeId] = new Set();
       peerStreamIdMap[employeeId] = { cameraStreamId, screenStreamId };
 
-      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      });
       peerConnections[employeeId] = pc;
 
       pc.ontrack = (event) => {
@@ -324,7 +331,7 @@ const useMonitoringStore = create((set, get) => ({
         violations: [alertWithTime, ...state.violations].slice(0, 50),
         activeExams: state.activeExams.map((e) =>
           e.employeeId === data.employeeId
-            ? { ...e, lastViolation: data.description, violationCount: (e.violationCount || 0) + 1 }
+            ? { ...e, lastViolation: data.description, violationCount: (parseInt(e.violationCount) || 0) + 1 }
             : e
         ),
       }));
