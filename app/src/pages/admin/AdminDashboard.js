@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, FileText, CheckCircle, TrendingUp, AlertTriangle, Clock, Award, BarChart3 } from 'lucide-react';
+import { Users, FileText, CheckCircle, TrendingUp, TrendingDown, AlertTriangle, Clock, Award, BarChart3 } from 'lucide-react';
 import api from '../../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -27,7 +27,6 @@ export default function AdminDashboard() {
     return !localStorage.getItem('admin_dashboard_stats');
   });
 
-
   const load = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -52,43 +51,20 @@ export default function AdminDashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-
-  const SkeletonCard = () => (
-    <div className="stat-card" style={{ animation: 'pulse 1.5s infinite ease-in-out' }}>
-      <div className="stat-icon" style={{ background: 'var(--border-light)' }}>
-        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--border)' }} />
-      </div>
-      <div className="stat-info" style={{ width: '100%' }}>
-        <div style={{ height: 28, width: 60, backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
-        <div style={{ height: 14, width: 90, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
-      </div>
-    </div>
-  );
-
-  const SkeletonChart = () => (
-    <div className="card" style={{ animation: 'pulse 1.5s infinite ease-in-out', height: 350 }}>
-      <div style={{ height: 20, width: 200, backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 20 }} />
-      <div style={{ height: 280, width: '100%', backgroundColor: 'var(--border-light)', borderRadius: 8 }} />
-    </div>
-  );
-
-  const SkeletonList = () => (
-    <div className="card" style={{ animation: 'pulse 1.5s infinite ease-in-out', height: 250 }}>
-      <div style={{ height: 20, width: 180, backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 16 }} />
-      {[...Array(4)].map((_, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < 3 ? '1px solid var(--border-light)' : 'none' }}>
-          <div style={{ height: 14, width: 120, backgroundColor: 'var(--border-light)', borderRadius: 4 }} />
-          <div style={{ height: 20, width: 40, backgroundColor: 'var(--border-light)', borderRadius: 10 }} />
-        </div>
-      ))}
-    </div>
-  );
+  const CustomBarLabel = ({ x, y, width, height, value, index, data }) => {
+    const count = data[index]?.count || 0;
+    return (
+      <text x={x + width / 2} y={y - 10} fill="#f8fafc" textAnchor="middle" fontSize="13" fontWeight="700">
+        {count} users
+      </text>
+    );
+  };
 
   const statCards = [
-    { icon: Users, label: 'Total Employees', value: stats?.totalEmployees || 0, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
-    { icon: FileText, label: 'Assessments', value: stats?.activeAssessments || 0, color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)' },
-    { icon: CheckCircle, label: 'Completed Exams', value: stats?.totalExamsTaken || 0, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-    { icon: TrendingUp, label: 'Avg Score', value: `${analytics?.avgScore || 0}%`, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    { icon: Users, label: 'Total Employees', value: stats?.totalEmployees || 0, color: '#6366f1', bg: 'rgba(99,102,241,0.15)', trend: 'up' },
+    { icon: FileText, label: 'Assessments', value: stats?.activeAssessments || 0, color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)', trend: 'up' },
+    { icon: CheckCircle, label: 'Completed Exams', value: stats?.totalExamsTaken || 0, color: '#10b981', bg: 'rgba(16,185,129,0.15)', trend: 'up' },
+    { icon: TrendingUp, label: 'Avg Score', value: `${analytics?.avgScore || 0}%`, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', trend: analytics?.avgScore > 60 ? 'up' : 'down' },
   ];
 
   const deptData = analytics?.departmentPerformance?.map(d => ({ name: d._id || 'N/A', score: Math.round(d.avgScore), count: d.count })) || [];
@@ -96,138 +72,219 @@ export default function AdminDashboard() {
     { name: 'Passed', value: analytics?.passedResults || 0 },
     { name: 'Failed', value: analytics?.failedResults || 0 },
   ];
+  const totalPie = pieData[0].value + pieData[1].value;
+
+  const maxViolations = Math.max(...(violations.length ? violations.map(v => v.count) : [1]), 1);
 
   return (
-    <div>
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+    <div style={{ background: '#0F1117', minHeight: '100vh', padding: '24px', fontFamily: "'Inter', 'Geist', sans-serif", color: '#e2e8f0', borderRadius: '16px' }}>
+      <style>{`
+        .premium-glass-card {
+          background: rgba(22, 27, 43, 0.5);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .premium-glass-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          border-radius: 16px;
+          padding: 2px;
+          background: linear-gradient(135deg, rgba(99,102,241,1), rgba(168,85,247,1), rgba(236,72,153,1));
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0;
+          transition: opacity 0.4s ease;
+          pointer-events: none;
+        }
+
+        .premium-glass-card:hover {
+          box-shadow: 0 0 30px rgba(99,102,241,0.15);
+          transform: translateY(-2px);
+          background: rgba(30, 36, 56, 0.6);
+        }
+
+        .premium-glass-card:hover::before {
+          opacity: 1;
+        }
+
+        .quick-stat-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          position: relative;
+        }
+        .quick-stat-item:last-child {
+          border-bottom: none;
+        }
+        .quick-stat-item::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          height: 2px;
+          width: 25%;
+          background: var(--underline-color);
+          border-radius: 2px;
+        }
+        .quick-stat-value {
+          font-size: 24px;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .violation-bar-bg {
+          width: 100%;
+          height: 6px;
+          background: rgba(255,255,255,0.08);
+          border-radius: 4px;
+          margin-top: 8px;
+          overflow: hidden;
+        }
+        .violation-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #f59e0b, #ef4444);
+          border-radius: 4px;
+          transition: width 0.5s ease-out;
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
         <div>
-          <h1>Dashboard Overview</h1>
-          <p>Real-time overview of your assessment platform</p>
+          <h1 style={{ color: '#f8fafc', fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>Dashboard Overview</h1>
+          <p style={{ color: '#94a3b8', margin: 0 }}>Real-time overview of your assessment platform</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="stats-grid" style={{ marginBottom: 28 }}>
-        {loading && !stats ? (
-          [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
-        ) : (
-          statCards.map((s, i) => (
-            <motion.div
-              key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06, duration: 0.2 }} className="stat-card"
-            >
-              <div className="stat-icon" style={{ background: s.bg }}>
-                <s.icon size={24} color={s.color} />
-              </div>
-              <div className="stat-info">
-                <h3>{s.value}</h3>
-                <p>{s.label}</p>
-              </div>
-            </motion.div>
-          ))
-        )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+        {statCards.map((s, i) => (
+          <motion.div
+            key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.2 }} className="premium-glass-card"
+            style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '24px' }}
+          >
+            <div style={{ background: s.bg, padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <s.icon size={28} color={s.color} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '32px', fontWeight: '800', color: '#f8fafc', margin: '0 0 4px 0' }}>{s.value}</h3>
+              <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, fontWeight: '500' }}>{s.label}</p>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
       {/* Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
-        {loading && !analytics ? (
-          <>
-            <SkeletonChart />
-            <SkeletonChart />
-          </>
-        ) : (
-          <>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.2 }} className="card">
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20, color: 'var(--text-primary)' }}>
-                <BarChart3 size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
-                Department Performance
-              </h3>
-              <div style={{ height: 280, width: '100%', minWidth: 0, position: 'relative' }}>
-                {deptData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <BarChart data={deptData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} />
-                      <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} />
-                      <Tooltip contentStyle={{ background: '#12141f', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8, color: '#f1f5f9' }} />
-                      <Bar dataKey="score" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
-                      <defs>
-                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#818cf8" />
-                          <stop offset="100%" stopColor="#6366f1" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p>No department data yet</p></div>
-                )}
-              </div>
-            </motion.div>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '28px' }}>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.2 }} className="premium-glass-card">
+          <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 24px 0', color: '#f8fafc', display: 'flex', alignItems: 'center' }}>
+            <BarChart3 size={20} style={{ marginRight: '10px', color: '#818cf8' }} />
+            Department Performance
+          </h3>
+          <div style={{ height: '320px', width: '100%' }}>
+            {deptData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={deptData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'rgba(15, 17, 23, 0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#f8fafc', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} />
+                  <Bar dataKey="score" fill="url(#barGradient)" radius={[8, 8, 0, 0]} label={<CustomBarLabel data={deptData} />} />
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#c084fc" />
+                      <stop offset="100%" stopColor="#4f46e5" />
+                    </linearGradient>
+                  </defs>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>No department data yet</div>
+            )}
+          </div>
+        </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.2 }} className="card">
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20, color: 'var(--text-primary)' }}>
-                <Award size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
-                Pass/Fail Ratio
-              </h3>
-              <div style={{ height: 280, width: '100%', minWidth: 0, position: 'relative' }}>
-                {(pieData[0].value + pieData[1].value) > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <PieChart>
-                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                        {pieData.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : '#ef4444'} />)}
-                      </Pie>
-                      <Tooltip contentStyle={{ background: '#12141f', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8, color: '#f1f5f9' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p>No results yet</p></div>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.2 }} className="premium-glass-card">
+          <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 24px 0', color: '#f8fafc', display: 'flex', alignItems: 'center' }}>
+            <Award size={20} style={{ marginRight: '10px', color: '#10b981' }} />
+            Pass/Fail Ratio
+          </h3>
+          <div style={{ height: '320px', width: '100%', position: 'relative' }}>
+            {totalPie > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} dataKey="value" stroke="rgba(0,0,0,0.2)" strokeWidth={2}>
+                    {pieData.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : '#ef4444'} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: 'rgba(15, 17, 23, 0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#f8fafc' }} />
+                  <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
+                    <tspan x="50%" dy="-5" fontSize="36" fontWeight="800" fill="#f8fafc">{totalPie}</tspan>
+                    <tspan x="50%" dy="26" fontSize="14" fontWeight="600" fill="#94a3b8" letterSpacing="1px" textTransform="uppercase">Total</tspan>
+                  </text>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>No results yet</div>
+            )}
+          </div>
+        </motion.div>
       </div>
 
       {/* Violations & Quick Info */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {loading && !analytics ? (
-          <>
-            <SkeletonList />
-            <SkeletonList />
-          </>
-        ) : (
-          <>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.2 }} className="card">
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={18} color="var(--warning)" /> Violation Breakdown
-              </h3>
-              {violations.length > 0 ? violations.map((v, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < violations.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{v._id?.replace('-', ' ')}</span>
-                  <span className="badge badge-warning">{v.count}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.2 }} className="premium-glass-card">
+          <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 24px 0', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertTriangle size={20} color="#f59e0b" /> Violation Breakdown
+          </h3>
+          {violations.length > 0 ? violations.map((v, i) => {
+            const name = v._id ? v._id.replace('-', ' ') : 'Unknown Violation';
+            const width = Math.min((v.count / maxViolations) * 100, 100);
+            return (
+              <div key={i} style={{ padding: '14px 0', borderBottom: i < violations.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '14px', color: '#cbd5e1', textTransform: 'capitalize', fontWeight: '500' }}>{name}</span>
+                  <span style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>{v.count}</span>
                 </div>
-              )) : <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No violations recorded</p>}
-            </motion.div>
+                <div className="violation-bar-bg">
+                  <div className="violation-bar-fill" style={{ width: `${width}%` }} />
+                </div>
+              </div>
+            );
+          }) : <p style={{ color: '#94a3b8', fontSize: '15px', padding: '20px 0', textAlign: 'center', margin: 0 }}>No violations recorded</p>}
+        </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.2 }} className="card">
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Clock size={18} color="var(--info)" /> Quick Stats
-              </h3>
-              {[
-                { label: 'Pass Rate', value: `${analytics?.passRate || 0}%`, badge: 'badge-success' },
-                { label: 'Avg Score', value: `${analytics?.avgScore || 0}%`, badge: 'badge-primary' },
-                { label: 'Avg Completion Time', value: `${analytics?.avgCompletionTime || 0} min`, badge: 'badge-info' },
-                { label: 'Total Violations', value: analytics?.totalViolations || 0, badge: 'badge-danger' },
-              ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < 3 ? '1px solid var(--border-light)' : 'none' }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{item.label}</span>
-                  <span className={`badge ${item.badge}`}>{item.value}</span>
-                </div>
-              ))}
-            </motion.div>
-          </>
-        )}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.2 }} className="premium-glass-card">
+          <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 24px 0', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Clock size={20} color="#3b82f6" /> Quick Stats
+          </h3>
+          {[
+            { label: 'Pass Rate', value: `${analytics?.passRate || 0}%`, color: '#10b981', trend: 'up' },
+            { label: 'Avg Score', value: `${analytics?.avgScore || 0}%`, color: '#3b82f6', trend: 'up' },
+            { label: 'Avg Completion Time', value: `${analytics?.avgCompletionTime || 0} min`, color: '#a855f7', trend: 'down' },
+            { label: 'Total Violations', value: analytics?.totalViolations || 0, color: '#ef4444', trend: 'down' },
+          ].map((item, i) => (
+            <div key={i} className="quick-stat-item" style={{ '--underline-color': item.color }}>
+              <span style={{ fontSize: '15px', color: '#cbd5e1', fontWeight: '500' }}>{item.label}</span>
+              <div className="quick-stat-value" style={{ color: item.color }}>
+                {item.value}
+                {item.trend === 'up' ? <TrendingUp size={20} strokeWidth={3} /> : <TrendingDown size={20} strokeWidth={3} />}
+              </div>
+            </div>
+          ))}
+        </motion.div>
       </div>
     </div>
   );
