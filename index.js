@@ -394,7 +394,20 @@ async function startServer() {
         clearUserCache(req.user._id);
       }
 
-      res.json({ success: true, message: isUserCancelled ? 'Exam cancelled successfully' : 'Exam auto-submitted successfully' });
+      const unansweredCount = questions.length - (req.body.answers ? req.body.answers.length : 0);
+
+      res.json({ 
+        success: true, 
+        message: isUserCancelled ? 'Exam cancelled successfully' : 'Exam auto-submitted successfully',
+        percentage: result.percentage,
+        passed: result.passed,
+        totalScore: result.totalScore,
+        totalMarks: result.totalMarks,
+        correctCount: correctAnswersCount,
+        wrongCount: wrongAnswersCount,
+        unansweredCount: unansweredCount,
+        totalQuestions: questions.length
+      });
     } catch (err) {
       console.error('[/api/submit-exam] ERROR:', err);
       res.status(500).json({ success: false, message: err.message, error: err.message });
