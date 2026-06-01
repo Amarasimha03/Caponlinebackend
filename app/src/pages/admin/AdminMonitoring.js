@@ -8,14 +8,21 @@ function attachStream(ref, stream) {
   if (!ref.current || !stream) return () => {};
   const video = ref.current;
   
-  if (video.srcObject !== stream) {
-    video.srcObject = stream;
-    video.muted = true;
-    video.playsInline = true;
-    video.play().catch(e => console.warn("Video play error:", e));
-  } else if (video.paused) {
-    video.play().catch(e => console.warn("Video play error:", e));
-  }
+  // Extract the video track
+  const tracks = stream.getVideoTracks();
+  if (tracks.length === 0) return () => {};
+  
+  // Wrap the track in a new MediaStream!
+  // This is CRITICAL for WebRTC remote streams in React.
+  // Moving the exact same MediaStream object between the grid <video> and the modal <video>
+  // causes the browser's hardware decoder to stall and show a black screen.
+  // Wrapping it in a new MediaStream creates a fresh playback pipeline.
+  const wrappedStream = new MediaStream([tracks[0]]);
+  
+  video.srcObject = wrappedStream;
+  video.muted = true;
+  video.playsInline = true;
+  video.play().catch(e => console.warn("Video play error:", e));
   
   return () => {
     if (video) video.srcObject = null;
