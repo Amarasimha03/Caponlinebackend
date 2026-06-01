@@ -22,7 +22,16 @@ function attachStream(ref, stream) {
   video.srcObject = wrappedStream;
   video.muted = true;
   video.playsInline = true;
-  video.play().catch(e => console.warn("Video play error:", e));
+  
+  const playPromise = video.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(e => {
+      // Ignore harmless AbortError when video is unmounted or source changed rapidly
+      if (e.name !== 'AbortError') {
+        console.warn("Video play error:", e);
+      }
+    });
+  }
   
   return () => {
     if (video) video.srcObject = null;
@@ -30,7 +39,7 @@ function attachStream(ref, stream) {
 }
 
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
-const CandidateCard = memo(({ candidate, onMaximize, isMaximized }) => {
+const CandidateCard = memo(({ candidate, onMaximize }) => {
   const cameraRef = useRef(null);
   const screenRef = useRef(null);
 
@@ -42,23 +51,18 @@ const CandidateCard = memo(({ candidate, onMaximize, isMaximized }) => {
     let detachCamera = () => {};
     let detachScreen = () => {};
 
-    if (!isMaximized) {
-      if (candidate.cameraStream) {
-        detachCamera = attachStream(cameraRef, candidate.cameraStream);
-      }
-      if (candidate.screenStream) {
-        detachScreen = attachStream(screenRef, candidate.screenStream);
-      }
-    } else {
-      if (cameraRef.current) cameraRef.current.srcObject = null;
-      if (screenRef.current) screenRef.current.srcObject = null;
+    if (candidate.cameraStream) {
+      detachCamera = attachStream(cameraRef, candidate.cameraStream);
+    }
+    if (candidate.screenStream) {
+      detachScreen = attachStream(screenRef, candidate.screenStream);
     }
 
     return () => {
       detachCamera();
       detachScreen();
     };
-  }, [candidate.cameraStream, candidate.screenStream, candidate.employeeId, isMaximized]);
+  }, [candidate.cameraStream, candidate.screenStream]);
 
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
@@ -290,7 +294,6 @@ export default function AdminMonitoring() {
                   key={candidate.employeeId || i} 
                   candidate={candidate} 
                   onMaximize={setSelectedCandidate} 
-                  isMaximized={selectedCandidate?.employeeId === candidate.employeeId}
                 />
               ))}
             </div>
