@@ -3,8 +3,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, User, Camera, Maximize2, X, Activity, ShieldAlert, Monitor } from 'lucide-react';
 import useMonitoringStore from '../../store/monitoringStore';
 
+// Reliable stream attachment helper that safely handles video playback
+function attachStream(ref, stream) {
+  if (!ref.current || !stream) return () => {};
+  const video = ref.current;
+  
+  if (video.srcObject !== stream) {
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+    video.play().catch(e => console.warn("Video play error:", e));
+  } else if (video.paused) {
+    video.play().catch(e => console.warn("Video play error:", e));
+  }
+  
+  return () => {
+    if (video) video.srcObject = null;
+  };
+}
+
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
-const CandidateCard = memo(({ candidate, isMaximized, onMaximize }) => {
+const CandidateCard = memo(({ candidate, onMaximize }) => {
   const cameraRef = useRef(null);
   const screenRef = useRef(null);
 
@@ -12,90 +31,26 @@ const CandidateCard = memo(({ candidate, isMaximized, onMaximize }) => {
   const hasScreen = !!candidate.screenStream;
   const hasAnyStream = hasCamera || hasScreen;
 
-  // ✅ Include employeeId in deps so srcObject reattaches after navigation away/back
   useEffect(() => {
-    let cleanupCamera = () => {};
-    let cleanupScreen = () => {};
+    let detachCamera = () => {};
+    let detachScreen = () => {};
 
-    if (cameraRef.current && candidate.cameraStream) {
-      const video = cameraRef.current;
-      const playVideo = () => video.play().catch(e => console.warn("Card camera play error:", e));
-      
-      if (isMaximized) {
-        if (video.srcObject) video.srcObject = null;
-      } else {
-        if (video.srcObject !== candidate.cameraStream) {
-          video.srcObject = candidate.cameraStream;
-          video.muted = true;
-          video.playsInline = true;
-          video.onloadedmetadata = playVideo;
-          playVideo();
-        }
-        
-        const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
-        if (cameraTrack) {
-          const onUnmute = () => {
-            console.log('[AdminMonitoring] Camera track unmuted — replaying');
-            if (video.srcObject) {
-              const stream = video.srcObject;
-              video.srcObject = null;
-              video.srcObject = stream;
-            }
-            playVideo();
-          };
-          cameraTrack.addEventListener('unmute', onUnmute);
-          cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
-          if (!cameraTrack.muted && video.paused) {
-            playVideo();
-          }
-        }
+    if (!isMaximized) {
+      if (candidate.cameraStream) {
+        detachCamera = attachStream(cameraRef, candidate.cameraStream);
       }
-    } else if (cameraRef.current && !candidate.cameraStream) {
-      cameraRef.current.srcObject = null;
-    }
-
-    if (screenRef.current && candidate.screenStream) {
-      const video = screenRef.current;
-      const playVideo = () => video.play().catch(e => console.warn("Card screen play error:", e));
-      
-      if (isMaximized) {
-        if (video.srcObject) video.srcObject = null;
-      } else {
-        if (video.srcObject !== candidate.screenStream) {
-          video.srcObject = candidate.screenStream;
-          video.muted = true;
-          video.playsInline = true;
-          video.onloadedmetadata = playVideo;
-          playVideo();
-        }
-        
-        const screenTrack = candidate.screenStream.getVideoTracks()[0];
-        if (screenTrack) {
-          const onUnmute = () => {
-            console.log('[AdminMonitoring] Screen track unmuted — replaying');
-            if (video.srcObject) {
-              const stream = video.srcObject;
-              video.srcObject = null;
-              video.srcObject = stream;
-            }
-            playVideo();
-          };
-          screenTrack.addEventListener('unmute', onUnmute);
-          cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
-          if (!screenTrack.muted && video.paused) {
-            playVideo();
-          }
-        }
+      if (candidate.screenStream) {
+        detachScreen = attachStream(screenRef, candidate.screenStream);
       }
-    } else if (screenRef.current && !candidate.screenStream) {
-      screenRef.current.srcObject = null;
+    } else {
+      if (cameraRef.current) cameraRef.current.srcObject = null;
+      if (screenRef.current) screenRef.current.srcObject = null;
     }
 
     return () => {
-      cleanupCamera();
-      cleanupScreen();
+      detachCamera();
+      detachScreen();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidate.cameraStream, candidate.screenStream, candidate.employeeId, isMaximized]);
 
   return (
@@ -213,89 +168,36 @@ export default function AdminMonitoring() {
     if (!didRestore) {
       rejoin(); // No existing connections — ask employees to send new offers
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update selected candidate streams in the modal when it opens
   useEffect(() => {
-    let cleanupCamera = () => {};
-    let cleanupScreen = () => {};
-
-    if (selectedCandidate) {
-      // Find the latest state of the selected candidate
-      const currentCandidate = activeExams.find(e => e.employeeId === selectedCandidate.employeeId);
-      if (!currentCandidate) {
-        // Candidate submitted exam or disconnected — auto-close the modal
-        setSelectedCandidate(null);
-        return;
-      }
-      if (currentCandidate) {
-        if (selectedCameraRef.current && currentCandidate.cameraStream) {
-          const video = selectedCameraRef.current;
-          const playCamera = () => video.play().catch(e => console.warn("Camera play error:", e));
-          
-          if (video.srcObject !== currentCandidate.cameraStream) {
-            video.srcObject = currentCandidate.cameraStream;
-            video.muted = true;
-            video.playsInline = true;
-            video.onloadedmetadata = playCamera;
-            playCamera();
-          }
-          
-          const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
-          if (cameraTrack) {
-            const onUnmute = () => {
-              console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
-              if (video.srcObject) {
-                const stream = video.srcObject;
-                video.srcObject = null;
-                video.srcObject = stream;
-              }
-              playCamera();
-            };
-            cameraTrack.addEventListener('unmute', onUnmute);
-            cleanupCamera = () => cameraTrack.removeEventListener('unmute', onUnmute);
-            if (!cameraTrack.muted && video.paused) {
-              playCamera();
-            }
-          }
-        }
-        if (selectedScreenRef.current && currentCandidate.screenStream) {
-          const video = selectedScreenRef.current;
-          const playScreen = () => video.play().catch(e => console.warn("Screen play error:", e));
-          
-          if (video.srcObject !== currentCandidate.screenStream) {
-            video.srcObject = currentCandidate.screenStream;
-            video.muted = true;
-            video.playsInline = true;
-            video.onloadedmetadata = playScreen;
-            playScreen();
-          }
-          
-          const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
-          if (screenTrack) {
-            const onUnmute = () => {
-              console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
-              if (video.srcObject) {
-                const stream = video.srcObject;
-                video.srcObject = null;
-                video.srcObject = stream;
-              }
-              playScreen();
-            };
-            screenTrack.addEventListener('unmute', onUnmute);
-            cleanupScreen = () => screenTrack.removeEventListener('unmute', onUnmute);
-            if (!screenTrack.muted && video.paused) {
-              playScreen();
-            }
-          }
-        }
-      }
+    const currentCandidate = selectedCandidate ? activeExams.find(e => e.employeeId === selectedCandidate.employeeId) : null;
+    
+    if (selectedCandidate && !currentCandidate) {
+      // Candidate submitted exam or disconnected — auto-close the modal
+      setSelectedCandidate(null);
+      return;
     }
 
+    let detachCamera = () => {};
+    let detachScreen = () => {};
+
+    // Refs may not be attached yet on first render due to AnimatePresence — defer
+    const timer = setTimeout(() => {
+      if (currentCandidate?.cameraStream) {
+        detachCamera = attachStream(selectedCameraRef, currentCandidate.cameraStream);
+      }
+      if (currentCandidate?.screenStream) {
+        detachScreen = attachStream(selectedScreenRef, currentCandidate.screenStream);
+      }
+    }, 50);
+
     return () => {
-      cleanupCamera();
-      cleanupScreen();
+      clearTimeout(timer);
+      detachCamera();
+      detachScreen();
     };
   }, [selectedCandidate, activeExams]);
 
@@ -377,12 +279,7 @@ export default function AdminMonitoring() {
           {activeExams.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
               {activeExams.map((candidate, i) => (
-                <CandidateCard 
-                  key={candidate.employeeId || i} 
-                  candidate={candidate} 
-                  isMaximized={selectedCandidate?.employeeId === candidate.employeeId}
-                  onMaximize={setSelectedCandidate} 
-                />
+                <CandidateCard key={candidate.employeeId || i} candidate={candidate} onMaximize={setSelectedCandidate} />
               ))}
             </div>
           ) : (

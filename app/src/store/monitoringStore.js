@@ -38,7 +38,7 @@ const useMonitoringStore = create((set, get) => ({
     }
 
     try {
-      const res     = await api.get('/live-monitoring');
+      const res = await api.get('/live-monitoring');
       const fetched = res.data || [];
       consecutiveFailures = 0; // reset on success
 
@@ -47,11 +47,11 @@ const useMonitoringStore = create((set, get) => ({
           const existing = state.activeExams.find((p) => p.employeeId === item.employeeId);
           return {
             ...item,
-            cameraActive:    item.cameraActive || (existing?.cameraActive ?? false),
+            cameraActive: item.cameraActive || (existing?.cameraActive ?? false),
             webrtcConnected: existing?.webrtcConnected ?? (peerConnections[item.employeeId]?.connectionState === 'connected'),
-            cameraStream:    existing?.cameraStream  ?? null,
-            screenStream:    existing?.screenStream  ?? null,
-            lastViolation:   existing?.lastViolation ?? null,
+            cameraStream: existing?.cameraStream ?? null,
+            screenStream: existing?.screenStream ?? null,
+            lastViolation: existing?.lastViolation ?? null,
           };
         });
         return { activeExams: updatedExams };
