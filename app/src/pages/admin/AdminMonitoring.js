@@ -20,15 +20,18 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
     if (cameraRef.current && candidate.cameraStream) {
       const video = cameraRef.current;
       const playVideo = () => video.play().catch(e => console.warn("Card camera play error:", e));
-      if (video.srcObject !== candidate.cameraStream) {
-        video.srcObject = candidate.cameraStream;
-        video.muted = true;
-        video.playsInline = true;
-        video.onloadedmetadata = playVideo;
-        playVideo();
-      }
+      
       const cameraTrack = candidate.cameraStream.getVideoTracks()[0];
       if (cameraTrack) {
+        const currentTrack = video.srcObject?.getVideoTracks()[0];
+        if (currentTrack !== cameraTrack) {
+          video.srcObject = new MediaStream([cameraTrack]);
+          video.muted = true;
+          video.playsInline = true;
+          video.onloadedmetadata = playVideo;
+          playVideo();
+        }
+        
         const onUnmute = () => {
           console.log('[AdminMonitoring] Camera track unmuted — replaying');
           if (video.srcObject) {
@@ -51,15 +54,18 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
     if (screenRef.current && candidate.screenStream) {
       const video = screenRef.current;
       const playVideo = () => video.play().catch(e => console.warn("Card screen play error:", e));
-      if (video.srcObject !== candidate.screenStream) {
-        video.srcObject = candidate.screenStream;
-        video.muted = true;
-        video.playsInline = true;
-        video.onloadedmetadata = playVideo;
-        playVideo();
-      }
+      
       const screenTrack = candidate.screenStream.getVideoTracks()[0];
       if (screenTrack) {
+        const currentTrack = video.srcObject?.getVideoTracks()[0];
+        if (currentTrack !== screenTrack) {
+          video.srcObject = new MediaStream([screenTrack]);
+          video.muted = true;
+          video.playsInline = true;
+          video.onloadedmetadata = playVideo;
+          playVideo();
+        }
+        
         const onUnmute = () => {
           console.log('[AdminMonitoring] Screen track unmuted — replaying');
           if (video.srcObject) {
@@ -221,15 +227,18 @@ export default function AdminMonitoring() {
         if (selectedCameraRef.current && currentCandidate.cameraStream) {
           const video = selectedCameraRef.current;
           const playCamera = () => video.play().catch(e => console.warn("Camera play error:", e));
-          if (video.srcObject !== currentCandidate.cameraStream) {
-            video.srcObject = currentCandidate.cameraStream;
-            video.muted = true;
-            video.playsInline = true;
-            video.onloadedmetadata = playCamera;
-            playCamera();
-          }
+          
           const cameraTrack = currentCandidate.cameraStream.getVideoTracks()[0];
           if (cameraTrack) {
+            const currentTrack = video.srcObject?.getVideoTracks()[0];
+            if (currentTrack !== cameraTrack) {
+              video.srcObject = new MediaStream([cameraTrack]);
+              video.muted = true;
+              video.playsInline = true;
+              video.onloadedmetadata = playCamera;
+              playCamera();
+            }
+            
             const onUnmute = () => {
               console.log('[AdminMonitoring Modal] Camera track unmuted — replaying');
               if (video.srcObject) {
@@ -249,15 +258,18 @@ export default function AdminMonitoring() {
         if (selectedScreenRef.current && currentCandidate.screenStream) {
           const video = selectedScreenRef.current;
           const playScreen = () => video.play().catch(e => console.warn("Screen play error:", e));
-          if (video.srcObject !== currentCandidate.screenStream) {
-            video.srcObject = currentCandidate.screenStream;
-            video.muted = true;
-            video.playsInline = true;
-            video.onloadedmetadata = playScreen;
-            playScreen();
-          }
+          
           const screenTrack = currentCandidate.screenStream.getVideoTracks()[0];
           if (screenTrack) {
+            const currentTrack = video.srcObject?.getVideoTracks()[0];
+            if (currentTrack !== screenTrack) {
+              video.srcObject = new MediaStream([screenTrack]);
+              video.muted = true;
+              video.playsInline = true;
+              video.onloadedmetadata = playScreen;
+              playScreen();
+            }
+
             const onUnmute = () => {
               console.log('[AdminMonitoring Modal] Screen track unmuted — replaying');
               if (video.srcObject) {
